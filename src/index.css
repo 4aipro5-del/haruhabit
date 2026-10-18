@@ -1,21 +1,21 @@
 @import 'tailwindcss';
 
 /*
- * 오뮤 다예쁨체 (오뮤다이어리 × 보이저엑스)
- * 라이선스: 웹사이트 사용·임베딩 가능 / 폰트 파일 수정·재배포·판매 불가
- * → 폰트 파일을 저장소나 public/ 에 넣지 않고, 눈누(noonnu)가 제공하는 웹폰트 주소에서 불러옵니다.
+ * HS새마을체 (토끼네활자공장 기획·제작)
+ * 라이선스(눈누 요약): 웹사이트 사용·임베딩·수정·재배포 가능 / 폰트 자체 유료 판매 불가
+ * 눈누(noonnu)가 제공하는 웹폰트 주소에서 불러옵니다.
  */
 @font-face {
-  font-family: 'OmuDaye';
-  src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_2304-01@1.0/omyu_pretty.woff2') format('woff2');
+  font-family: 'HSSaemaul';
+  src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_2108@1.1/HSSaemaul-Regular.woff') format('woff');
   font-weight: normal;
   font-style: normal;
   font-display: swap;
 }
 
 @theme {
-  /* 손글씨 느낌의 오뮤 다예쁨체. 불러오기 전·실패 시에는 프리텐다드 */
-  --font-sans: 'OmuDaye', 'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, system-ui, 'Apple SD Gothic Neo',
+  /* HS새마을체. 불러오기 전·실패 시에는 프리텐다드 */
+  --font-sans: 'HSSaemaul', 'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, system-ui, 'Apple SD Gothic Neo',
     'Noto Sans KR', sans-serif;
 
   /* 다이어리 종이 */
