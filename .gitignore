@@ -17,9 +17,10 @@ backups/
 haru-habit-backup-*.json
 localStorage-*.json
 
-# 폰트 파일: 배포·재배포 허용 범위를 확인하기 전까지 저장소에 올리지 않음
-# (확인 후 올리려면 아래 줄을 지우세요)
+# 폰트 파일: 메모먼트 꾹꾹체는 재배포·웹폰트 임베딩이 허용되지 않아 절대 올리지 않음
 public/fonts/
+*.ttf
+*.otf
 
 # Supabase CLI 임시 파일
 supabase/.temp/
