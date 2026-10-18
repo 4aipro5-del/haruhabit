@@ -185,71 +185,75 @@ function AuthForm() {
   )
 
   return (
-    <form onSubmit={submit} className="flex max-w-md flex-col gap-4">
+    <div className="flex flex-col gap-4">
+      {/* 안내 문장은 입력칸 폭(max-w-md)에 묶이지 않게 따로 두고, 문장마다 한 줄로 */}
       <p className="text-base text-ink-500">
-        로그인하면 기록이 클라우드에 저장되고, 다른 기기에서도 같은 기록을 볼 수 있어요. 로그인하지 않아도 이 브라우저의 기록은 그대로예요.
+        <span className="block">로그인하면 기록이 클라우드에 저장되고, 다른 기기에서도 같은 기록을 볼 수 있어요.</span>
+        <span className="block">로그인하지 않아도 이 브라우저의 기록은 그대로예요.</span>
       </p>
-      <div className="flex gap-1">
-        {tab('login', '로그인')}
-        {tab('signup', '회원가입')}
-        {tab('link', '이메일 링크로')}
-      </div>
+      <form onSubmit={submit} className="flex max-w-md flex-col gap-4">
+        <div className="flex gap-1">
+          {tab('login', '로그인')}
+          {tab('signup', '회원가입')}
+          {tab('link', '이메일 링크로')}
+        </div>
 
-      <label className="flex flex-col gap-1.5 text-base text-ink-700">
-        이메일
-        <input
-          type="email"
-          required
-          autoComplete="email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          className={inputClass}
-        />
-      </label>
-
-      {mode === 'link' && (
-        <p className="text-base text-ink-500">비밀번호 없이, 메일로 받은 링크를 눌러 가입·로그인해요.</p>
-      )}
-
-      {(mode === 'login' || mode === 'signup') && (
         <label className="flex flex-col gap-1.5 text-base text-ink-700">
-          비밀번호 {mode === 'signup' && <span className="text-sm text-ink-400">(6자 이상)</span>}
-          <PasswordInput
-            value={password}
-            onChange={setPassword}
-            autoComplete={mode === 'signup' ? 'new-password' : 'current-password'}
+          이메일
+          <input
+            type="email"
+            required
+            autoComplete="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            className={inputClass}
           />
-          <span className="text-sm text-ink-400">영문 입력 상태에서 입력해 주세요 (한/영 키 확인)</span>
         </label>
-      )}
 
-      {error && <Message tone="error">{error}</Message>}
-      {done && <Message tone="ok">{done}</Message>}
+        {mode === 'link' && (
+          <p className="text-base text-ink-500">비밀번호 없이, 메일로 받은 링크를 눌러 가입·로그인해요.</p>
+        )}
 
-      <div className="flex flex-wrap items-center gap-3">
-        <button type="submit" disabled={working} className={primaryButton}>
-          {working
-            ? '처리 중…'
-            : mode === 'login'
-              ? '로그인'
-              : mode === 'signup'
-                ? '가입하기'
-                : mode === 'link'
-                  ? '로그인 링크 받기'
-                  : '재설정 메일 보내기'}
-        </button>
-        {mode === 'login' && (
-          <button type="button" onClick={() => switchMode('reset')} className="text-base text-ink-500 underline-offset-4 hover:underline">
-            비밀번호를 잊으셨나요?
-          </button>
+        {(mode === 'login' || mode === 'signup') && (
+          <label className="flex flex-col gap-1.5 text-base text-ink-700">
+            비밀번호 {mode === 'signup' && <span className="text-sm text-ink-400">(6자 이상)</span>}
+            <PasswordInput
+              value={password}
+              onChange={setPassword}
+              autoComplete={mode === 'signup' ? 'new-password' : 'current-password'}
+            />
+            <span className="text-sm text-ink-400">영문 입력 상태에서 입력해 주세요 (한/영 키 확인)</span>
+          </label>
         )}
-        {mode === 'reset' && (
-          <button type="button" onClick={() => switchMode('login')} className="text-base text-ink-500 underline-offset-4 hover:underline">
-            로그인으로 돌아가기
+
+        {error && <Message tone="error">{error}</Message>}
+        {done && <Message tone="ok">{done}</Message>}
+
+        <div className="flex flex-wrap items-center gap-3">
+          <button type="submit" disabled={working} className={primaryButton}>
+            {working
+              ? '처리 중…'
+              : mode === 'login'
+                ? '로그인'
+                : mode === 'signup'
+                  ? '가입하기'
+                  : mode === 'link'
+                    ? '로그인 링크 받기'
+                    : '재설정 메일 보내기'}
           </button>
-        )}
-      </div>
-    </form>
+          {mode === 'login' && (
+            <button type="button" onClick={() => switchMode('reset')} className="text-base text-ink-500 underline-offset-4 hover:underline">
+              비밀번호를 잊으셨나요?
+            </button>
+          )}
+          {mode === 'reset' && (
+            <button type="button" onClick={() => switchMode('login')} className="text-base text-ink-500 underline-offset-4 hover:underline">
+              로그인으로 돌아가기
+            </button>
+          )}
+        </div>
+      </form>
+    </div>
   )
 }
 
