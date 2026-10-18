@@ -1,21 +1,22 @@
 @import 'tailwindcss';
 
 /*
- * HS새마을체 (토끼네활자공장 기획·제작)
- * 라이선스(눈누 요약): 웹사이트 사용·임베딩·수정·재배포 가능 / 폰트 자체 유료 판매 불가
+ * 춤추는사람들체 (하다타입)
+ * 라이선스(눈누 요약): 웹사이트 사용·임베딩·수정·재배포 가능 / 폰트 파일 자체 판매 불가
  * 눈누(noonnu)가 제공하는 웹폰트 주소에서 불러옵니다.
  */
 @font-face {
-  font-family: 'HSSaemaul';
-  src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_2108@1.1/HSSaemaul-Regular.woff') format('woff');
-  font-weight: normal;
+  font-family: 'DancingPeople';
+  src: url('https://cdn.jsdelivr.net/gh/Project-Noonnu/2610082345@dancingpeoples-dance-vf/dancingpeoples-dance-vf/DancingPeoples-Dance-VF.woff2')
+    format('woff2');
+  font-weight: 400;
   font-style: normal;
   font-display: swap;
 }
 
 @theme {
-  /* HS새마을체. 불러오기 전·실패 시에는 프리텐다드 */
-  --font-sans: 'HSSaemaul', 'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, system-ui, 'Apple SD Gothic Neo',
+  /* 춤추는사람들체. 불러오기 전·실패 시에는 프리텐다드 */
+  --font-sans: 'DancingPeople', 'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, system-ui, 'Apple SD Gothic Neo',
     'Noto Sans KR', sans-serif;
 
   /* 다이어리 종이 */
