@@ -4,23 +4,19 @@
 아직 아무것도 업로드·배포하지 않았어요.
 
 배포 주소는 `https://<GitHub 계정>.github.io/<저장소 이름>/` 이 됩니다.
-아래에서는 저장소 이름을 `haru-habit-tracker` 로 가정했어요.
+이 프로젝트의 저장소: <https://github.com/4aipro5-del/haruhabit> → 배포 주소 **`https://4aipro5-del.github.io/haruhabit/`**
 
 ---
 
 ## 1. GitHub 저장소 만들기
-1. <https://github.com/new> 에서 **Repository name** 에 `haru-habit-tracker` 입력
+1. <https://github.com/new> 에서 **Repository name** 입력 (이 프로젝트는 `haruhabit` 으로 만들었어요 ✅)
 2. **공개(Public)** 로 할지 **비공개(Private)** 로 할지 정하기
    - 무료 계정에서 GitHub Pages 는 **Public 저장소**에서만 쓸 수 있어요.
    - Public 이면 코드가 누구에게나 보여요. (.env.local 과 폰트 파일은 올라가지 않게 해 두었어요)
 3. "Add a README" 등은 **체크하지 않고** Create repository
 
 ## 2. 코드 올리기 (제가 대신할 수 있어요 — 확인만 해 주세요)
-저장소 주소를 알려 주시면 아래 명령으로 올릴게요.
-```
-git remote add origin https://github.com/<계정>/haru-habit-tracker.git
-git push -u origin main
-```
+✅ 완료: `git remote add origin https://github.com/4aipro5-del/haruhabit.git` → `git push -u origin main`
 
 ## 3. Supabase 값을 GitHub 에 넣기
 저장소 **Settings › Secrets and variables › Actions › Variables 탭 › New repository variable**
@@ -37,8 +33,8 @@ git push -u origin main
 
 ## 5. Supabase 인증 주소 추가
 Supabase 대시보드 **Authentication › URL Configuration**
-- **Redirect URLs** 에 추가: `https://<계정>.github.io/haru-habit-tracker/**`
-- **Site URL**: 배포 후 실제로 쓸 주소로 바꾸려면 `https://<계정>.github.io/haru-habit-tracker/`
+- **Redirect URLs** 에 추가: `https://4aipro5-del.github.io/haruhabit/**`
+- **Site URL**: 배포 후 실제로 쓸 주소로 바꾸려면 `https://4aipro5-del.github.io/haruhabit/`
   (로컬 개발용 `http://localhost:5173/**` 는 Redirect URLs 에 그대로 두세요)
 
 ## 6. 배포 실행

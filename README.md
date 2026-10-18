@@ -21,7 +21,7 @@ Supabase 설정 방법은 [docs/stage3-supabase-guide.md](docs/stage3-supabase-g
 
 `.github/workflows/deploy-pages.yml` 이 main 브랜치에 올라오면 빌드·배포합니다.
 필요한 설정은 [docs/github-pages-guide.md](docs/github-pages-guide.md) 를 보세요.
-로컬에서 배포용으로 빌드해 보려면: `BASE_PATH=/haru-habit-tracker/ npm run build`
+배포 주소: https://4aipro5-del.github.io/haruhabit/ · 로컬에서 배포용으로 빌드해 보려면: `BASE_PATH=/haruhabit/ npm run build`
 
 ## 실행 방법
 
