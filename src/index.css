@@ -1,22 +1,21 @@
 @import 'tailwindcss';
 
 /*
- * 춤추는사람들체 (하다타입)
- * 라이선스(눈누 요약): 웹사이트 사용·임베딩·수정·재배포 가능 / 폰트 파일 자체 판매 불가
+ * 카페24 써라운드 에어 (카페24)
+ * 라이선스: 무료, 웹폰트 포함 사용 범위 제한 없음, OFL(수정·재배포 가능) / 글꼴 자체 유료 판매 불가
  * 눈누(noonnu)가 제공하는 웹폰트 주소에서 불러옵니다.
  */
 @font-face {
-  font-family: 'DancingPeople';
-  src: url('https://cdn.jsdelivr.net/gh/Project-Noonnu/2610082345@dancingpeoples-dance-vf/dancingpeoples-dance-vf/DancingPeoples-Dance-VF.woff2')
-    format('woff2');
-  font-weight: 400;
+  font-family: 'Cafe24SsurroundAir';
+  src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_2105_2@1.0/Cafe24SsurroundAir.woff') format('woff');
+  font-weight: normal;
   font-style: normal;
   font-display: swap;
 }
 
 @theme {
-  /* 춤추는사람들체. 불러오기 전·실패 시에는 프리텐다드 */
-  --font-sans: 'DancingPeople', 'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, system-ui, 'Apple SD Gothic Neo',
+  /* 카페24 써라운드 에어. 불러오기 전·실패 시에는 프리텐다드 */
+  --font-sans: 'Cafe24SsurroundAir', 'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, system-ui, 'Apple SD Gothic Neo',
     'Noto Sans KR', sans-serif;
 
   /* 다이어리 종이 */
