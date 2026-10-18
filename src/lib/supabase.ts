@@ -52,6 +52,9 @@ export function friendlyError(error: unknown): string {
   if (/Email not confirmed/i.test(message)) return '이메일 인증이 아직 안 됐어요. 받은 메일의 링크를 눌러 주세요.'
   if (/User already registered/i.test(message)) return '이미 가입된 이메일이에요. 로그인해 주세요.'
   if (/Password should be at least/i.test(message)) return '비밀번호는 6자 이상이어야 해요.'
+  if (/different from the old password/i.test(message)) return '지금 비밀번호와 다른 비밀번호를 정해 주세요.'
+  if (/reauthentication|requires recent login/i.test(message))
+    return '보안을 위해 다시 로그인한 뒤 비밀번호를 바꿔 주세요.'
   if (/email rate limit/i.test(message))
     return '메일 발송 한도를 넘었어요. Supabase 기본 메일은 시간당 몇 통만 보낼 수 있어요. 1시간쯤 뒤에 다시 시도해 주세요.'
   if (/only request this after (\d+) seconds/i.test(message))

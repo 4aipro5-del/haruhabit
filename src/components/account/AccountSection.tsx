@@ -93,6 +93,8 @@ function SignedIn({ email }: { email: string }) {
   const { signOut } = useAuth()
   const [working, setWorking] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [settingPassword, setSettingPassword] = useState(false)
+  const [passwordDone, setPasswordDone] = useState(false)
 
   return (
     <div className="flex flex-col gap-3">
@@ -120,6 +122,33 @@ function SignedIn({ email }: { email: string }) {
         </button>
       </div>
       {error && <Message tone="error">{error}</Message>}
+
+      {/* 이메일 링크로 가입한 계정은 비밀번호가 없어서, 로그인한 상태에서 정할 수 있게 함 */}
+      {settingPassword ? (
+        <NewPasswordForm
+          intro="새 비밀번호를 정해 주세요. 정해 두면 이메일 링크와 비밀번호 둘 다로 로그인할 수 있어요."
+          onCancel={() => setSettingPassword(false)}
+          onDone={() => {
+            setSettingPassword(false)
+            setPasswordDone(true)
+          }}
+        />
+      ) : (
+        <div className="flex flex-wrap items-center gap-3 px-2">
+          <button
+            type="button"
+            onClick={() => {
+              setSettingPassword(true)
+              setPasswordDone(false)
+            }}
+            className={lineButton}
+          >
+            비밀번호 설정·변경
+          </button>
+          <span className="text-base text-ink-500">이메일 링크로 가입했다면 여기서 비밀번호를 정할 수 있어요.</span>
+        </div>
+      )}
+      {passwordDone && <Message tone="ok">비밀번호를 정했어요. 이제 이메일과 비밀번호로도 로그인할 수 있어요.</Message>}
     </div>
   )
 }
@@ -257,7 +286,15 @@ function AuthForm() {
   )
 }
 
-function NewPasswordForm() {
+function NewPasswordForm({
+  intro = '새 비밀번호를 정해 주세요.',
+  onDone,
+  onCancel,
+}: {
+  intro?: string
+  onDone?: () => void
+  onCancel?: () => void
+}) {
   const { updatePassword } = useAuth()
   const [password, setPassword] = useState('')
   const [confirm, setConfirm] = useState('')
@@ -277,13 +314,14 @@ function NewPasswordForm() {
         setError(null)
         try {
           await updatePassword(password)
+          onDone?.()
         } catch (err) {
           setError(err instanceof Error ? err.message : '비밀번호를 바꾸지 못했어요.')
           setWorking(false)
         }
       }}
     >
-      <Message tone="info">새 비밀번호를 정해 주세요.</Message>
+      <Message tone="info">{intro}</Message>
       <label className="flex flex-col gap-1.5 text-base text-ink-700">
         새 비밀번호 <span className="text-sm text-ink-400">(6자 이상)</span>
         <PasswordInput value={password} onChange={setPassword} autoComplete="new-password" />
@@ -293,10 +331,15 @@ function NewPasswordForm() {
         <PasswordInput value={confirm} onChange={setConfirm} autoComplete="new-password" />
       </label>
       {error && <Message tone="error">{error}</Message>}
-      <div>
+      <div className="flex flex-wrap gap-2">
         <button type="submit" disabled={working} className={primaryButton}>
-          {working ? '바꾸는 중…' : '비밀번호 바꾸기'}
+          {working ? '저장 중…' : '비밀번호 저장'}
         </button>
+        {onCancel && (
+          <button type="button" onClick={onCancel} disabled={working} className={lineButton}>
+            취소
+          </button>
+        )}
       </div>
     </form>
   )
