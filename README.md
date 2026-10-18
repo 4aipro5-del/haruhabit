@@ -17,6 +17,12 @@ Supabase 설정 방법은 [docs/stage3-supabase-guide.md](docs/stage3-supabase-g
 - 전체 보기 점 색은 활동에 저장된 대표 캘린더(`primaryCalendarId`) 색이라 캘린더 순서와 무관합니다.
 - 캘린더를 삭제하면 그 캘린더에만 연결된 활동은 함께 삭제되고, 다른 캘린더에도 연결된 활동은 남습니다.
 
+## 배포 (GitHub Pages)
+
+`.github/workflows/deploy-pages.yml` 이 main 브랜치에 올라오면 빌드·배포합니다.
+필요한 설정은 [docs/github-pages-guide.md](docs/github-pages-guide.md) 를 보세요.
+로컬에서 배포용으로 빌드해 보려면: `BASE_PATH=/haru-habit-tracker/ npm run build`
+
 ## 실행 방법
 
 터미널에서 이 폴더로 이동한 다음:

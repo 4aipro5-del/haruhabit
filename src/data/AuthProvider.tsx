@@ -29,8 +29,12 @@ interface AuthContextValue {
 
 const AuthContext = createContext<AuthContextValue | null>(null)
 
-/** 메일 링크가 돌아올 주소. # 주소 이동과 섞이지 않게 ?auth= 만 붙입니다. */
-const redirectUrl = (kind: 'confirmed' | 'recovery') => `${window.location.origin}/?auth=${kind}`
+/**
+ * 메일 링크가 돌아올 주소. # 주소 이동과 섞이지 않게 ?auth= 만 붙입니다.
+ * GitHub Pages 처럼 하위 경로(/haru-habit-tracker/)에서 열려도 맞는 주소가 되도록 BASE_URL 을 붙입니다.
+ */
+const redirectUrl = (kind: 'confirmed' | 'recovery') =>
+  `${window.location.origin}${import.meta.env.BASE_URL}?auth=${kind}`
 
 async function run(fn: () => PromiseLike<{ data: unknown; error: unknown }>): Promise<unknown> {
   let result: { data: unknown; error: unknown }

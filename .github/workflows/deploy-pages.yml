@@ -1,0 +1,76 @@
+# 하루한칸을 GitHub Pages 에 배포합니다.
+# - main 브랜치에 올리거나(push), Actions 탭에서 직접 실행(Run workflow)하면 동작해요.
+# - 필요한 값: 저장소 Settings › Secrets and variables › Actions › Variables 에
+#     VITE_SUPABASE_URL, VITE_SUPABASE_PUBLISHABLE_KEY
+#   (둘 다 브라우저에 공개되는 값이에요. service_role / sb_secret_ 키는 절대 넣지 마세요.)
+
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# Pages 배포에 필요한 최소 권한만
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# 배포가 겹치면 진행 중인 것을 끝까지 마치고 다음 것을 실행
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Check Supabase settings
+        env:
+          VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_PUBLISHABLE_KEY: ${{ vars.VITE_SUPABASE_PUBLISHABLE_KEY }}
+        run: |
+          if [ -z "$VITE_SUPABASE_URL" ] || [ -z "$VITE_SUPABASE_PUBLISHABLE_KEY" ]; then
+            echo "::error::VITE_SUPABASE_URL / VITE_SUPABASE_PUBLISHABLE_KEY 변수가 없어요. 저장소 Settings › Secrets and variables › Actions › Variables 에 추가해 주세요."
+            exit 1
+          fi
+          case "$VITE_SUPABASE_PUBLISHABLE_KEY" in
+            sb_secret_*)
+              echo "::error::비밀(secret) 키가 들어 있어요. Publishable key(sb_publishable_...)로 바꿔 주세요."
+              exit 1
+              ;;
+          esac
+
+      - run: npm ci
+
+      - name: Type check and build
+        env:
+          # https://<계정>.github.io/<저장소이름>/ 에 맞춘 경로
+          BASE_PATH: /${{ github.event.repository.name }}/
+          VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_PUBLISHABLE_KEY: ${{ vars.VITE_SUPABASE_PUBLISHABLE_KEY }}
+        run: npm run build
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
