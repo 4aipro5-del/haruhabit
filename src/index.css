@@ -1,0 +1,105 @@
+@import 'tailwindcss';
+
+/* 메모먼트 꾹꾹체 (memoment.kr). 설치돼 있으면 내 컴퓨터 글꼴을, 없으면 public/fonts 파일을 씁니다. */
+@font-face {
+  font-family: 'MemomentKkukkukk';
+  src:
+    local('MemomentKkukkukk'),
+    local('MemomentKkukkukkR'),
+    url('/fonts/MemomentKkukkukk.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+@theme {
+  /* 손글씨 느낌의 메모먼트 꾹꾹체. 불러오기 전에는 프리텐다드로 표시 */
+  --font-sans: 'MemomentKkukkukk', 'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, system-ui, 'Apple SD Gothic Neo',
+    'Noto Sans KR', sans-serif;
+
+  /* 다이어리 종이 */
+  --color-desk: #f3efe6;
+  --color-sidebar: #f6f2ea;
+  --color-paper: #fbf8f1;
+  --color-line: #e7e0d2;
+  --color-sun: #c96a5e;
+  --color-sat: #4f82bd;
+
+  /* 바탕 */
+  --color-cream-50: #fffdf8;
+  --color-cream-100: #fff8ee;
+  --color-cream-200: #f7eedf;
+  --color-cream-300: #eadfcb;
+
+  /* 글자 */
+  --color-ink-900: #3a332d;
+  --color-ink-700: #5c534a;
+  --color-ink-500: #857b70;
+  --color-ink-400: #a89e92;
+  --color-ink-300: #c9bfb2;
+
+  /* 파스텔 */
+  --color-leaf-50: #f3faef;
+  --color-leaf-100: #e5f3dc;
+  --color-leaf-200: #cde8be;
+  --color-leaf-400: #93c97c;
+  --color-leaf-500: #82b38c;
+  --color-leaf-700: #4b7f3c;
+
+  --color-sky-50: #f0f8fd;
+  --color-sky-100: #dff0fa;
+  --color-sky-200: #c2e2f5;
+  --color-sky-400: #7dbde3;
+  --color-sky-500: #6fa5d6;
+  --color-sky-700: #3a7aa3;
+
+  --color-butter-50: #fffbec;
+  --color-butter-100: #fff3cc;
+  --color-butter-200: #ffe69a;
+  --color-butter-400: #f2c94c;
+  --color-butter-500: #e6bf5c;
+  --color-butter-700: #8f6b0e;
+
+  --color-lilac-50: #f7f3fc;
+  --color-lilac-100: #eee6f9;
+  --color-lilac-200: #dccdf2;
+  --color-lilac-400: #b09ae0;
+  --color-lilac-500: #bba3dc;
+  --color-lilac-700: #6e55a6;
+
+  --color-peach-50: #fff5f0;
+  --color-peach-100: #ffe7dc;
+  --color-peach-200: #ffd0bc;
+  --color-peach-400: #f4a584;
+  --color-peach-500: #eba68b;
+  --color-peach-700: #a85a39;
+
+  /* 다이어리 느낌을 위해 그림자는 쓰지 않습니다 */
+  --shadow-soft: 0 0 #0000;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  background: var(--color-desk);
+  color: var(--color-ink-900);
+  font-family: var(--font-sans);
+  word-break: keep-all;
+  -webkit-font-smoothing: antialiased;
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-ink-700);
+  outline-offset: 2px;
+}
+
+/* 아주 연한 모눈종이 무늬 */
+.paper-grid {
+  background-color: var(--color-paper);
+  background-image:
+    linear-gradient(rgb(120 100 60 / 0.045) 1px, transparent 1px),
+    linear-gradient(90deg, rgb(120 100 60 / 0.045) 1px, transparent 1px);
+  background-size: 18px 18px;
+}
