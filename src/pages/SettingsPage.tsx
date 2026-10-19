@@ -30,13 +30,6 @@ export function SettingsPage() {
         <AccountSection />
       </section>
 
-      {mode === 'cloud' && (
-        <section className="mt-10 sm:mt-12">
-          <h2 className="mb-3 text-2xl font-semibold text-ink-900">이 브라우저 기록 옮기기</h2>
-          <MigrationSection />
-        </section>
-      )}
-
       <section className="mt-10 sm:mt-12">
         <div className="mb-3 flex items-center justify-between">
           <h2 className="text-2xl font-semibold text-ink-900">캘린더 관리</h2>
@@ -69,6 +62,13 @@ export function SettingsPage() {
           </details>
         )}
       </section>
+
+      {mode === 'cloud' && (
+        <section className="mt-10 sm:mt-12">
+          <h2 className="mb-3 text-2xl font-semibold text-ink-900">이 브라우저 기록 옮기기</h2>
+          <MigrationSection />
+        </section>
+      )}
 
       <section className="mt-10 sm:mt-12">
         <h2 className="mb-3 text-2xl font-semibold text-ink-900">데이터</h2>
