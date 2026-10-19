@@ -157,8 +157,8 @@ export function CalendarFormPage({ today, calendar, onDone, onCancel }: Calendar
                       }`}
                     >
                       <meta.icon size={20} />
-                      <span className="text-sm">{meta.label}</span>
-                      <span className={`text-xs ${active ? 'text-cream-200' : 'text-ink-400'}`}>
+                      <span className="text-base">{meta.label}</span>
+                      <span className={`text-sm ${active ? 'text-cream-200' : 'text-ink-400'}`}>
                         {active ? meta.description : '친구 초대와 함께 다음 단계에서 구현 예정'}
                       </span>
                     </button>
@@ -177,7 +177,7 @@ export function CalendarFormPage({ today, calendar, onDone, onCancel }: Calendar
                 maxLength={20}
                 onChange={(e) => update('name', e.target.value)}
                 placeholder="예: 아침 스트레칭"
-                className="w-full rounded-2xl border border-cream-300 bg-white px-4 py-3 text-sm text-ink-900 placeholder:text-ink-300 focus:border-ink-500 focus:outline-none"
+                className="w-full rounded-2xl border border-cream-300 bg-white px-4 py-3 text-base text-ink-900 placeholder:text-ink-300 focus:border-ink-500 focus:outline-none"
               />
             </Field>
 
@@ -235,12 +235,12 @@ export function CalendarFormPage({ today, calendar, onDone, onCancel }: Calendar
           <Section step={isEdit ? 2 : 3} title="목표">
             {/* '매일'은 주 7회와 같아서 따로 두지 않고 주 1~7회로 고릅니다 */}
             <Field label="실천 빈도">
-              <label className="inline-flex items-center gap-2 text-sm text-ink-700">
+              <label className="inline-flex items-center gap-2 text-base text-ink-700">
                 주
                 <select
                   value={form.weeklyTimes}
                   onChange={(e) => update('weeklyTimes', Number(e.target.value))}
-                  className="rounded-xl border border-cream-300 bg-white px-3 py-2 text-sm"
+                  className="rounded-xl border border-cream-300 bg-white px-3 py-2 text-base"
                   aria-label="주당 횟수"
                 >
                   {[1, 2, 3, 4, 5, 6, 7].map((n) => (
@@ -286,9 +286,9 @@ export function CalendarFormPage({ today, calendar, onDone, onCancel }: Calendar
                     value={form.target}
                     placeholder="없음"
                     onChange={(e) => update('target', e.target.value)}
-                    className="w-32 rounded-2xl border border-cream-300 bg-white px-4 py-3 text-sm text-ink-900 placeholder:text-ink-300 focus:border-ink-500 focus:outline-none"
+                    className="w-32 rounded-2xl border border-cream-300 bg-white px-4 py-3 text-base text-ink-900 placeholder:text-ink-300 focus:border-ink-500 focus:outline-none"
                   />
-                  <span className="text-sm text-ink-700">{form.unit === 'hours' ? '분' : UNIT_META[form.unit].suffix}</span>
+                  <span className="text-base text-ink-700">{form.unit === 'hours' ? '분' : UNIT_META[form.unit].suffix}</span>
                 </div>
               </Field>
             )}
@@ -302,7 +302,7 @@ export function CalendarFormPage({ today, calendar, onDone, onCancel }: Calendar
                   type="date"
                   value={form.startDate}
                   onChange={(e) => update('startDate', e.target.value)}
-                  className="w-full rounded-2xl border border-cream-300 bg-white px-4 py-3 text-sm text-ink-900"
+                  className="w-full rounded-2xl border border-cream-300 bg-white px-4 py-3 text-base text-ink-900"
                 />
               </Field>
               <Field label="종료일" htmlFor="cal-end">
@@ -313,11 +313,11 @@ export function CalendarFormPage({ today, calendar, onDone, onCancel }: Calendar
                   min={form.startDate}
                   disabled={form.noEndDate}
                   onChange={(e) => update('endDate', e.target.value)}
-                  className="w-full rounded-2xl border border-cream-300 bg-white px-4 py-3 text-sm text-ink-900 disabled:bg-cream-100 disabled:text-ink-300"
+                  className="w-full rounded-2xl border border-cream-300 bg-white px-4 py-3 text-base text-ink-900 disabled:bg-cream-100 disabled:text-ink-300"
                 />
               </Field>
             </div>
-            <label className="inline-flex items-center gap-2 text-sm text-ink-700">
+            <label className="inline-flex items-center gap-2 text-base text-ink-700">
               <input
                 type="checkbox"
                 checked={form.noEndDate}
@@ -444,8 +444,8 @@ function ConfirmDelete({
 function Section({ step, title, children }: { step: number; title: string; children: ReactNode }) {
   return (
     <Card className="flex flex-col gap-5">
-      <h2 className="flex items-center gap-2.5 text-base text-ink-900">
-        <span className="flex h-6 w-6 items-center justify-center rounded-full bg-cream-200 text-xs text-ink-700">{step}</span>
+      <h2 className="flex items-center gap-2.5 text-lg text-ink-900">
+        <span className="flex h-7 w-7 items-center justify-center rounded-full bg-cream-200 text-sm text-ink-700">{step}</span>
         {title}
       </h2>
       {children}
@@ -456,11 +456,11 @@ function Section({ step, title, children }: { step: number; title: string; child
 function Field({ label, htmlFor, help, children }: { label: string; htmlFor?: string; help?: string; children: ReactNode }) {
   return (
     <div className="flex flex-col gap-2">
-      <label htmlFor={htmlFor} className="text-sm text-ink-700">
+      <label htmlFor={htmlFor} className="text-base text-ink-700">
         {label}
       </label>
       {children}
-      {help && <p className="text-xs text-ink-500">{help}</p>}
+      {help && <p className="text-sm text-ink-500">{help}</p>}
     </div>
   )
 }
@@ -482,7 +482,7 @@ function Pill({
       onClick={onClick}
       disabled={disabled}
       aria-pressed={active}
-      className={`rounded-full px-4 py-2 text-sm transition-colors ${
+      className={`rounded-full px-4 py-2 text-base transition-colors ${
         active ? 'bg-ink-900 text-cream-50' : 'bg-cream-100 text-ink-700 hover:bg-cream-200'
       } disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-cream-100`}
     >
