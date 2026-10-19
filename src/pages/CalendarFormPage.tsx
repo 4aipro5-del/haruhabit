@@ -19,7 +19,7 @@ interface FormState {
   color: ColorKey
   unit: GoalUnit
   weeklyTimes: number
-  /** 1회 목표량. 비워 두면 목표 없이 양만 기록 ('했는지만'이면 쓰지 않음) */
+  /** 1회 목표량. 비워 두면 목표 없이 양만 기록 ('했는지만'이면 쓰지 않음). 시간 기록이면 분 단위로 입력 */
   target: string
   startDate: DateKey
   endDate: DateKey
@@ -58,7 +58,7 @@ function toForm(calendar: HabitCalendar | undefined, today: DateKey): FormState 
     unit: calendar.unit,
     // 예전에 '매일'로 만든 캘린더는 주 7회로 보여 줌
     weeklyTimes: calendar.frequency?.kind === 'weekly' ? calendar.frequency.times : calendar.frequency?.kind === 'daily' ? 7 : 3,
-    target: calendar.target ? String(calendar.target) : '',
+    target: calendar.target ? String(calendar.unit === 'hours' ? Math.round(calendar.target * 60) : calendar.target) : '',
     startDate: calendar.startDate,
     endDate: calendar.endDate ?? addDays(today, 29),
     noEndDate: !calendar.endDate,
@@ -76,7 +76,9 @@ export function CalendarFormPage({ today, calendar, onDone, onCancel }: Calendar
   // 기록이 있는 캘린더의 단위를 바꾸면 기존 기록과 맞지 않으므로 막습니다.
   const unitLocked = linked.length > 0
   const showTarget = form.unit !== 'check'
-  const targetValue = form.target.trim() === '' ? undefined : Number(form.target)
+  const targetInput = form.target.trim() === '' ? undefined : Number(form.target)
+  // 시간 기록의 목표량은 분으로 입력받고, 저장은 다른 기록처럼 시간 단위로 해요.
+  const targetValue = targetInput !== undefined && form.unit === 'hours' ? targetInput / 60 : targetInput
   const targetValid = targetValue === undefined || (Number.isFinite(targetValue) && targetValue > 0)
   const canSave = form.name.trim().length > 0 && (!showTarget || targetValid)
 
@@ -263,7 +265,7 @@ export function CalendarFormPage({ today, calendar, onDone, onCancel }: Calendar
             >
               <div className="flex flex-wrap gap-2">
                 {UNIT_OPTIONS.map((unit) => (
-                  <Pill key={unit} active={form.unit === unit} disabled={unitLocked && form.unit !== unit} onClick={() => update('unit', unit)}>
+                  <Pill key={unit} active={form.unit === unit} disabled={unitLocked && form.unit !== unit} onClick={() => setForm((f) => (f.unit === unit ? f : { ...f, unit, target: '' }))}>
                     {UNIT_META[unit].label}
                   </Pill>
                 ))}
@@ -288,7 +290,7 @@ export function CalendarFormPage({ today, calendar, onDone, onCancel }: Calendar
                     onChange={(e) => update('target', e.target.value)}
                     className="w-32 rounded-2xl border border-cream-300 bg-white px-4 py-3 text-sm text-ink-900 placeholder:text-ink-300 focus:border-ink-500 focus:outline-none"
                   />
-                  <span className="text-sm text-ink-700">{UNIT_META[form.unit].suffix}</span>
+                  <span className="text-sm text-ink-700">{form.unit === 'hours' ? '분' : UNIT_META[form.unit].suffix}</span>
                 </div>
               </Field>
             )}
@@ -382,7 +384,8 @@ export function CalendarFormPage({ today, calendar, onDone, onCancel }: Calendar
 
 function Preview({ form }: { form: FormState }) {
   const c = COLOR_STYLES[form.color]
-  const target = form.unit !== 'check' && Number(form.target) > 0 ? Number(form.target) : undefined
+  const raw = Number(form.target)
+  const target = form.unit !== 'check' && raw > 0 ? (form.unit === 'hours' ? raw / 60 : raw) : undefined
   const goalText = goalSummary({ frequency: { kind: 'weekly', times: form.weeklyTimes }, unit: form.unit, target })
 
   return (

@@ -1,7 +1,8 @@
 import { useMemo } from 'react'
-import { Award, CircleCheck, Flame, Target, TrendingUp } from 'lucide-react'
+import { Award, CircleCheck, Flame, Pencil, Target, TrendingUp } from 'lucide-react'
 import type { ActivityRecord, DateKey, HabitCalendar } from '../types'
 import { COLOR_STYLES } from '../lib/colors'
+import { hrefFor } from '../lib/router'
 
 import {
   activeDates,
@@ -13,7 +14,7 @@ import {
   totalsByDate,
   weeklyProgress,
 } from '../lib/stats'
-import { UNIT_META, formatAmount, formatFrequency, formatNumber, formatPercent, formatRecordAmount } from '../lib/units'
+import { UNIT_META, formatAmount, formatFrequency, formatPercent, formatRecordAmount } from '../lib/units'
 import { useMonthNavigator } from '../hooks/useMonthNavigator'
 import { DetailHeader } from '../components/layout/DetailHeader'
 import { DayRecordPanel } from '../components/calendar/DayRecordPanel'
@@ -49,6 +50,15 @@ export function PersonalDetailPage({ calendar, records, today }: Props) {
       <DetailHeader
         calendar={calendar}
         meta={<Chip>{formatFrequency(calendar.frequency)}</Chip>}
+        actions={
+          <a
+            href={hrefFor({ name: 'edit', id: calendar.id })}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-line px-4 py-2 text-[15px] text-ink-700 hover:bg-line/50"
+          >
+            <Pencil size={16} />
+            캘린더 수정
+          </a>
+        }
       />
 
       <div className="grid gap-4 sm:gap-6 lg:grid-cols-3">
@@ -119,7 +129,7 @@ export function PersonalDetailPage({ calendar, records, today }: Props) {
             getLevel={(date) => (dates.has(date) ? 2 : 0)}
             getLabel={(date) => {
               const amount = totals.get(date)
-              return amount ? formatNumber(amount) + UNIT_META[calendar.unit].suffix : undefined
+              return amount ? formatAmount(amount, calendar.unit) : undefined
             }}
             legend={
               <>

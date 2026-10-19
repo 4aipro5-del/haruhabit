@@ -141,7 +141,12 @@ function CalendarRow({ calendar: cal, ended = false }: { calendar: HabitCalendar
           </>
         )}
       </span>
-      {personal && <ChevronRight size={22} className="shrink-0 text-ink-400" />}
+      {personal && (
+        <span className="flex shrink-0 items-center text-base text-ink-500">
+          수정
+          <ChevronRight size={22} className="text-ink-400" />
+        </span>
+      )}
     </>
   )
   const tone = ended ? 'text-ink-500' : personal ? 'text-ink-900' : 'text-ink-500'

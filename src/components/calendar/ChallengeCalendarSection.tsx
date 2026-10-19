@@ -2,7 +2,7 @@ import { useMemo } from 'react'
 import type { ActivityRecord, DateKey, HabitCalendar, Member } from '../../types'
 import { COLOR_STYLES } from '../../lib/colors'
 import { intensityLevel, recordsOn, totalsByDate } from '../../lib/stats'
-import { UNIT_META, formatNumber } from '../../lib/units'
+import { UNIT_META, formatAmount } from '../../lib/units'
 import { useMonthNavigator } from '../../hooks/useMonthNavigator'
 import { Card } from '../ui/Card'
 import { DayRecordPanel } from './DayRecordPanel'
@@ -40,7 +40,7 @@ export function ChallengeCalendarSection({ calendar, records, members, today }: 
             getLevel={(date) => intensityLevel(totals.get(date) ?? 0, [2, 4])}
             getLabel={(date) => {
               const amount = totals.get(date)
-              return amount ? formatNumber(amount) + suffix : undefined
+              return amount ? formatAmount(amount, calendar.unit) : undefined
             }}
             legend={
               <>
