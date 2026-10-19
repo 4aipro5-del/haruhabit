@@ -3,12 +3,10 @@ import { ArrowLeft, Check } from 'lucide-react'
 import type { CalendarInput, CalendarType, ColorKey, DateKey, GoalUnit, HabitCalendar, IconKey } from '../types'
 import { useData } from '../data/DataProvider'
 import { COLOR_OPTIONS, COLOR_STYLES } from '../lib/colors'
-import { addDays, formatMonthDay } from '../lib/date'
+import { addDays } from '../lib/date'
 import { CALENDAR_ICONS, ICON_OPTIONS, TYPE_META } from '../lib/icons'
-import { UNIT_META, UNIT_OPTIONS, goalSummary } from '../lib/units'
+import { UNIT_META, UNIT_OPTIONS } from '../lib/units'
 import { Card } from '../components/ui/Card'
-import { TypeBadge } from '../components/ui/Badges'
-import { CalendarIcon } from '../components/ui/CalendarIcon'
 
 // 개인 캘린더 만들기·수정·삭제 화면
 // 공동 목표·개인 경쟁 캘린더 만들기는 친구 초대가 필요해서 다음 단계에서 구현 예정입니다.
@@ -132,9 +130,9 @@ export function CalendarFormPage({ today, calendar, onDone, onCancel }: Calendar
       </button>
       <h1 className="text-2xl tracking-tight text-ink-900 sm:text-3xl">{isEdit ? '캘린더 수정' : '새 캘린더 만들기'}</h1>
 
-      <div className="mt-6 grid gap-6 lg:grid-cols-3">
+      <div className="mt-6">
         <form
-          className="flex flex-col gap-4 sm:gap-6 lg:col-span-2"
+          className="flex flex-col gap-4 sm:gap-6"
           onSubmit={(e) => {
             e.preventDefault()
             save()
@@ -357,13 +355,6 @@ export function CalendarFormPage({ today, calendar, onDone, onCancel }: Calendar
             </p>
           )}
         </form>
-
-        <aside className="lg:col-span-1">
-          <div className="lg:sticky lg:top-8">
-            <p className="mb-2 text-xs text-ink-500">미리보기</p>
-            <Preview form={form} />
-          </div>
-        </aside>
       </div>
 
       {confirmDelete && calendar && (
@@ -378,39 +369,6 @@ export function CalendarFormPage({ today, calendar, onDone, onCancel }: Calendar
           }}
         />
       )}
-    </div>
-  )
-}
-
-function Preview({ form }: { form: FormState }) {
-  const c = COLOR_STYLES[form.color]
-  const raw = Number(form.target)
-  const target = form.unit !== 'check' && raw > 0 ? (form.unit === 'hours' ? raw / 60 : raw) : undefined
-  const goalText = goalSummary({ frequency: { kind: 'weekly', times: form.weeklyTimes }, unit: form.unit, target })
-
-  return (
-    <div className={`rounded-3xl p-5 ring-1 ring-inset ${c.tint} ${c.ringSoft}`}>
-      <CalendarIcon icon={form.icon} color={form.color} />
-      <h3 className="mt-4 text-base text-ink-900">{form.name.trim() || '이름 없는 캘린더'}</h3>
-      <div className="mt-2">
-        <TypeBadge type="personal" />
-      </div>
-      <dl className="mt-4 flex flex-col gap-2 text-sm">
-        <div className="flex justify-between gap-3">
-          <dt className="text-ink-500">목표</dt>
-          <dd className="text-right text-ink-900">{goalText}</dd>
-        </div>
-        <div className="flex justify-between gap-3">
-          <dt className="text-ink-500">기록</dt>
-          <dd className="text-ink-900">{UNIT_META[form.unit].label}</dd>
-        </div>
-        <div className="flex justify-between gap-3">
-          <dt className="text-ink-500">기간</dt>
-          <dd className="text-ink-900">
-            {formatMonthDay(form.startDate)} ~ {form.noEndDate ? '계속' : formatMonthDay(form.endDate)}
-          </dd>
-        </div>
-      </dl>
     </div>
   )
 }
