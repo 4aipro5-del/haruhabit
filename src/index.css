@@ -75,6 +75,41 @@
   --color-peach-500: #eba68b;
   --color-peach-700: #a85a39;
 
+  --color-mint-50: #f0f9f6;
+  --color-mint-100: #dcf2ea;
+  --color-mint-200: #bfe6d8;
+  --color-mint-400: #7fcbb1;
+  --color-mint-500: #6bb9a0;
+  --color-mint-700: #2f7a63;
+
+  --color-rose-50: #fdf2f5;
+  --color-rose-100: #fbe3ea;
+  --color-rose-200: #f6c9d6;
+  --color-rose-400: #eb98ae;
+  --color-rose-500: #df8aa2;
+  --color-rose-700: #a84863;
+
+  --color-sand-50: #faf6f0;
+  --color-sand-100: #f2e9dc;
+  --color-sand-200: #e6d5bd;
+  --color-sand-400: #cdb08a;
+  --color-sand-500: #bf9f78;
+  --color-sand-700: #7d6140;
+
+  --color-olive-50: #f6f8ee;
+  --color-olive-100: #ebf0d8;
+  --color-olive-200: #d9e3b5;
+  --color-olive-400: #b3c47a;
+  --color-olive-500: #a2b468;
+  --color-olive-700: #5e6d2c;
+
+  --color-slate-50: #f3f5f7;
+  --color-slate-100: #e5e9ee;
+  --color-slate-200: #ccd4de;
+  --color-slate-400: #9aa8b8;
+  --color-slate-500: #8796a8;
+  --color-slate-700: #4f5d6e;
+
   /* 다이어리 느낌을 위해 그림자는 쓰지 않습니다 */
   --shadow-soft: 0 0 #0000;
 }

@@ -18,7 +18,6 @@ interface FormState {
   icon: IconKey
   color: ColorKey
   unit: GoalUnit
-  frequencyKind: 'daily' | 'weekly'
   weeklyTimes: number
   /** 1회 목표량 (체크 단위면 없음) */
   target: number
@@ -46,7 +45,6 @@ function toForm(calendar: HabitCalendar | undefined, today: DateKey): FormState 
       icon: 'sprout',
       color: 'leaf',
       unit: 'check',
-      frequencyKind: 'weekly',
       weeklyTimes: 3,
       target: 1,
       goalsText: '',
@@ -60,8 +58,8 @@ function toForm(calendar: HabitCalendar | undefined, today: DateKey): FormState 
     icon: calendar.icon,
     color: calendar.color,
     unit: calendar.unit,
-    frequencyKind: calendar.frequency?.kind ?? 'weekly',
-    weeklyTimes: calendar.frequency?.kind === 'weekly' ? calendar.frequency.times : 3,
+    // 예전에 '매일'로 만든 캘린더는 주 7회로 보여 줌
+    weeklyTimes: calendar.frequency?.kind === 'weekly' ? calendar.frequency.times : calendar.frequency?.kind === 'daily' ? 7 : 3,
     target: calendar.target ?? 1,
     goalsText: calendar.goals.join('\n'),
     startDate: calendar.startDate,
@@ -81,7 +79,7 @@ export function CalendarFormPage({ today, calendar, onDone, onCancel }: Calendar
   // 기록이 있는 캘린더의 단위를 바꾸면 기존 기록과 맞지 않으므로 막습니다.
   const unitLocked = linked.length > 0
   const showTarget = form.unit !== 'check'
-  const frequencyLabel = form.frequencyKind === 'daily' ? '매일' : `주 ${form.weeklyTimes}회`
+  const frequencyLabel = `주 ${form.weeklyTimes}회`
   const defaultGoal = `${frequencyLabel} ${form.name.trim() || '실천'}하기`
   const canSave = form.name.trim().length > 0 && (!showTarget || form.target > 0)
 
@@ -96,7 +94,7 @@ export function CalendarFormPage({ today, calendar, onDone, onCancel }: Calendar
       icon: form.icon,
       color: form.color,
       unit: form.unit,
-      frequency: form.frequencyKind === 'daily' ? { kind: 'daily' } : { kind: 'weekly', times: form.weeklyTimes },
+      frequency: { kind: 'weekly', times: form.weeklyTimes },
       target: showTarget ? form.target : undefined,
       goals: goals.length ? goals : [defaultGoal],
       startDate: form.startDate,
@@ -251,33 +249,24 @@ export function CalendarFormPage({ today, calendar, onDone, onCancel }: Calendar
               </div>
             </Field>
 
+            {/* '매일'은 주 7회와 같아서 따로 두지 않고 주 1~7회로 고릅니다 */}
             <Field label="실천 빈도">
-              <div className="flex flex-wrap items-center gap-2">
-                <Pill active={form.frequencyKind === 'daily'} onClick={() => update('frequencyKind', 'daily')}>
-                  매일
-                </Pill>
-                <Pill active={form.frequencyKind === 'weekly'} onClick={() => update('frequencyKind', 'weekly')}>
-                  주 N회
-                </Pill>
-                {form.frequencyKind === 'weekly' && (
-                  <label className="ml-1 inline-flex items-center gap-2 text-sm text-ink-700">
-                    주
-                    <select
-                      value={form.weeklyTimes}
-                      onChange={(e) => update('weeklyTimes', Number(e.target.value))}
-                      className="rounded-xl border border-cream-300 bg-white px-3 py-2 text-sm"
-                      aria-label="주당 횟수"
-                    >
-                      {[1, 2, 3, 4, 5, 6].map((n) => (
-                        <option key={n} value={n}>
-                          {n}
-                        </option>
-                      ))}
-                    </select>
-                    회
-                  </label>
-                )}
-              </div>
+              <label className="inline-flex items-center gap-2 text-sm text-ink-700">
+                주
+                <select
+                  value={form.weeklyTimes}
+                  onChange={(e) => update('weeklyTimes', Number(e.target.value))}
+                  className="rounded-xl border border-cream-300 bg-white px-3 py-2 text-sm"
+                  aria-label="주당 횟수"
+                >
+                  {[1, 2, 3, 4, 5, 6, 7].map((n) => (
+                    <option key={n} value={n}>
+                      {n}
+                    </option>
+                  ))}
+                </select>
+                회
+              </label>
             </Field>
 
             {showTarget && (
@@ -398,7 +387,7 @@ export function CalendarFormPage({ today, calendar, onDone, onCancel }: Calendar
 
 function Preview({ form }: { form: FormState }) {
   const c = COLOR_STYLES[form.color]
-  const frequency = formatFrequency(form.frequencyKind === 'daily' ? { kind: 'daily' } : { kind: 'weekly', times: form.weeklyTimes })
+  const frequency = formatFrequency({ kind: 'weekly', times: form.weeklyTimes })
   const goalText = form.unit === 'check' ? `${frequency} 체크하기` : `${frequency} · 한 번에 ${formatAmount(form.target, form.unit)}`
 
   return (

@@ -10,7 +10,7 @@ export type CalendarType = 'personal' | 'shared' | 'competition'
 /** check: 체크 / hours: 시간 / km: 거리 / count: 횟수 / pages: 페이지 */
 export type GoalUnit = 'check' | 'hours' | 'km' | 'count' | 'pages'
 
-export type ColorKey = 'leaf' | 'sky' | 'butter' | 'lilac' | 'peach'
+export type ColorKey = 'leaf' | 'sky' | 'butter' | 'lilac' | 'peach' | 'mint' | 'rose' | 'sand' | 'olive' | 'slate'
 
 export type IconKey =
   | 'dumbbell'
