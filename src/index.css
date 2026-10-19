@@ -45,7 +45,7 @@
   --color-leaf-200: #cde8be;
   --color-leaf-400: #93c97c;
   --color-leaf-500: #82b38c;
-  --color-leaf-600: #16a34a; /* Tailwind green-600 · 캘린더 대표색 */
+  --color-leaf-dot: #bef264; /* Tailwind lime-300 · 캘린더 대표색 */
   --color-leaf-700: #4b7f3c;
 
   --color-sky-50: #f0f8fd;
@@ -53,7 +53,7 @@
   --color-sky-200: #c2e2f5;
   --color-sky-400: #7dbde3;
   --color-sky-500: #6fa5d6;
-  --color-sky-600: #0284c7; /* Tailwind sky-600 · 캘린더 대표색 */
+  --color-sky-dot: #7dd3fc; /* Tailwind sky-300 · 캘린더 대표색 */
   --color-sky-700: #3a7aa3;
 
   --color-butter-50: #fffbec;
@@ -61,7 +61,7 @@
   --color-butter-200: #ffe69a;
   --color-butter-400: #f2c94c;
   --color-butter-500: #e6bf5c;
-  --color-butter-600: #ca8a04; /* Tailwind yellow-600 · 캘린더 대표색 */
+  --color-butter-dot: #fde047; /* Tailwind yellow-300 · 캘린더 대표색 */
   --color-butter-700: #8f6b0e;
 
   --color-lilac-50: #f7f3fc;
@@ -69,7 +69,7 @@
   --color-lilac-200: #dccdf2;
   --color-lilac-400: #b09ae0;
   --color-lilac-500: #bba3dc;
-  --color-lilac-600: #7c3aed; /* Tailwind violet-600 · 캘린더 대표색 */
+  --color-lilac-dot: #d8b4fe; /* Tailwind purple-300 · 캘린더 대표색 */
   --color-lilac-700: #6e55a6;
 
   --color-peach-50: #fff5f0;
@@ -77,7 +77,7 @@
   --color-peach-200: #ffd0bc;
   --color-peach-400: #f4a584;
   --color-peach-500: #eba68b;
-  --color-peach-600: #ea580c; /* Tailwind orange-600 · 캘린더 대표색 */
+  --color-peach-dot: #fdba74; /* Tailwind orange-300 · 캘린더 대표색 */
   --color-peach-700: #a85a39;
 
   --color-mint-50: #f0f9f6;
@@ -85,7 +85,7 @@
   --color-mint-200: #bfe6d8;
   --color-mint-400: #7fcbb1;
   --color-mint-500: #6bb9a0;
-  --color-mint-600: #0d9488; /* Tailwind teal-600 · 캘린더 대표색 */
+  --color-mint-dot: #5eead4; /* Tailwind teal-300 · 캘린더 대표색 */
   --color-mint-700: #2f7a63;
 
   --color-rose-50: #fdf2f5;
@@ -93,7 +93,7 @@
   --color-rose-200: #f6c9d6;
   --color-rose-400: #eb98ae;
   --color-rose-500: #df8aa2;
-  --color-rose-600: #db2777; /* Tailwind pink-600 · 캘린더 대표색 */
+  --color-rose-dot: #f9a8d4; /* Tailwind pink-300 · 캘린더 대표색 */
   --color-rose-700: #a84863;
 
   /* sand: 노랑·주황과 겹치지 않게 Tailwind indigo 계열로 (키 이름은 저장된 데이터와 맞추려고 그대로) */
@@ -102,23 +102,24 @@
   --color-sand-200: #c7d2fe;
   --color-sand-400: #818cf8;
   --color-sand-500: #6366f1;
-  --color-sand-600: #4f46e5; /* Tailwind indigo-600 · 캘린더 대표색 */
+  --color-sand-dot: #a5b4fc; /* Tailwind indigo-300 · 캘린더 대표색 */
   --color-sand-700: #4338ca;
 
-  --color-olive-50: #f6f8ee;
-  --color-olive-100: #ebf0d8;
-  --color-olive-200: #d9e3b5;
-  --color-olive-400: #b3c47a;
-  --color-olive-500: #a2b468;
-  --color-olive-600: #65a30d; /* Tailwind lime-600 · 캘린더 대표색 */
-  --color-olive-700: #5e6d2c;
+  /* olive: 초록 계열이 겹쳐서 Tailwind red 계열로 (키 이름은 저장된 데이터와 맞추려고 그대로) */
+  --color-olive-50: #fef2f2;
+  --color-olive-100: #fee2e2;
+  --color-olive-200: #fecaca;
+  --color-olive-400: #f87171;
+  --color-olive-500: #ef4444;
+  --color-olive-dot: #fca5a5; /* Tailwind red-300 · 캘린더 대표색 */
+  --color-olive-700: #b91c1c;
 
   --color-slate-50: #f3f5f7;
   --color-slate-100: #e5e9ee;
   --color-slate-200: #ccd4de;
   --color-slate-400: #9aa8b8;
   --color-slate-500: #8796a8;
-  --color-slate-600: #475569; /* Tailwind slate-600 · 캘린더 대표색 */
+  --color-slate-dot: #cbd5e1; /* Tailwind slate-300 · 캘린더 대표색 */
   --color-slate-700: #4f5d6e;
 
   /* 다이어리 느낌을 위해 그림자는 쓰지 않습니다 */

@@ -225,7 +225,7 @@ export function CalendarFormPage({ today, calendar, onDone, onCancel }: Calendar
                           active ? 'ring-2 ring-ink-900 ring-offset-2 ring-offset-white' : ''
                         }`}
                       >
-                        {active && <Check size={18} className="text-white" />}
+                        {active && <Check size={18} className="text-ink-900" />}
                       </span>
                     </button>
                   )
