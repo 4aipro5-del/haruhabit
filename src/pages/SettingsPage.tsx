@@ -120,7 +120,7 @@ export function SettingsPage() {
   )
 }
 
-/** 캘린더 관리 목록의 한 줄 (개인 캘린더는 눌러서 수정, 공유 챌린지는 보기만) */
+/** 캘린더 관리 목록의 한 줄 (개인 캘린더는 눌러서 상세 화면으로, 수정은 상세 화면의 '수정하기'에서) */
 function CalendarRow({ calendar: cal, ended = false }: { calendar: HabitCalendar; ended?: boolean }) {
   const personal = cal.type === 'personal'
   const detail = ended
@@ -141,12 +141,7 @@ function CalendarRow({ calendar: cal, ended = false }: { calendar: HabitCalendar
           </>
         )}
       </span>
-      {personal && (
-        <span className="flex shrink-0 items-center text-base text-ink-500">
-          수정
-          <ChevronRight size={22} className="text-ink-400" />
-        </span>
-      )}
+      {personal && <ChevronRight size={22} className="shrink-0 text-ink-400" />}
     </>
   )
   const tone = ended ? 'text-ink-500' : personal ? 'text-ink-900' : 'text-ink-500'
@@ -154,7 +149,7 @@ function CalendarRow({ calendar: cal, ended = false }: { calendar: HabitCalendar
     <li className="border-b border-line">
       {personal ? (
         <a
-          href={hrefFor({ name: 'edit', id: cal.id })}
+          href={hrefFor({ name: 'calendar', id: cal.id })}
           className={`flex items-center gap-3 px-2 py-4 text-lg hover:bg-line/30 sm:gap-4 sm:text-xl ${tone}`}
         >
           {content}

@@ -89,7 +89,11 @@ function Screens() {
                 key={route.name === 'edit' ? route.id : 'new'}
                 today={today}
                 calendar={editing}
-                onDone={changeFilter}
+                onDone={(filter) => {
+                  // 수정을 마치면 상세 화면으로 돌아감 (뒤로 가기에 수정 화면이 남지 않게 replace). 삭제했으면 첫 화면으로
+                  if (route.name === 'edit' && filter !== 'all') window.location.replace(hrefFor({ name: 'calendar', id: filter }))
+                  else changeFilter(filter)
+                }}
                 onCancel={() => window.history.back()}
               />
             )}

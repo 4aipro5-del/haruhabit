@@ -56,7 +56,7 @@ export function PersonalDetailPage({ calendar, records, today }: Props) {
             className="inline-flex items-center gap-1.5 rounded-lg border border-line px-4 py-2 text-[15px] text-ink-700 hover:bg-line/50"
           >
             <Pencil size={16} />
-            캘린더 수정
+            수정하기
           </a>
         }
       />
