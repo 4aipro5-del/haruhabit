@@ -1,6 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
-import type { ActivityRecord, CalendarInput, DateKey, GoalUnit, HabitCalendar, RecordInput } from '../types'
+import type { ActivityRecord, CalendarInput, ChallengeInput, ColorKey, DateKey, GoalUnit, HabitCalendar, Member, RecordInput } from '../types'
 import { ME_ID } from './sampleData'
+import { COLOR_OPTIONS } from '../lib/colors'
 
 // Supabase 데이터베이스 읽기·쓰기
 // 화면은 지금처럼 HabitCalendar / ActivityRecord 타입을 쓰고, 여기서 표 ↔ 타입을 바꿔 줍니다.
@@ -37,8 +38,52 @@ interface ActivityRow {
 
 export interface CloudData {
   calendars: HabitCalendar[]
+  /** 내 활동 원본 */
   records: ActivityRecord[]
+  /** 같은 챌린지 친구들의 기록 (그 챌린지에 연결된 것의 날짜·양만, 수정 불가) */
+  friendRecords: ActivityRecord[]
   memos: Record<DateKey, string>
+  /** 친구에게 보이는 내 닉네임 (없으면 null) */
+  nickname: string | null
+}
+
+interface MemberRow {
+  calendar_id: string
+  user_id: string
+  nickname: string
+  role: 'owner' | 'member'
+  joined_at: string
+}
+
+interface ChallengeRecordRow {
+  activity_id: string
+  owner_id: string
+  calendar_id: string
+  activity_date: string
+  amount: number | string
+  unit: GoalUnit
+}
+
+/** 초대 링크 미리보기 (서버가 쓸 수 있는 링크일 때만 요약을 줌) */
+export interface InvitePreview {
+  status: 'ok' | 'member' | 'full' | 'ended' | 'expired' | 'revoked' | 'invalid'
+  calendar_id?: string | null
+  name?: string
+  type?: 'shared' | 'competition'
+  icon?: HabitCalendar['icon']
+  color?: ColorKey
+  unit?: GoalUnit
+  target?: number | null
+  start_date?: string
+  end_date?: string | null
+  owner_nickname?: string
+  member_count?: number
+  expires_at?: string
+}
+
+export interface ActiveInvite {
+  token: string
+  expiresAt: string
 }
 
 function check<T>(result: { data: T; error: unknown }): T {
@@ -120,7 +165,7 @@ async function fetchAllRows<T>(query: (from: number, to: number) => PromiseLike<
 
 /** 내 캘린더·활동·메모 전체 불러오기 */
 export async function fetchCloudData(client: SupabaseClient): Promise<CloudData> {
-  const [calendarRows, activityRows, memoRows] = await Promise.all([
+  const [calendarRows, activityRows, memoRows, profileRows] = await Promise.all([
     fetchAllRows<CalendarRow>((from, to) =>
       client
         .from('calendars')
@@ -140,13 +185,141 @@ export async function fetchCloudData(client: SupabaseClient): Promise<CloudData>
     fetchAllRows<{ memo_date: string; content: string }>((from, to) =>
       client.from('daily_memos').select('memo_date, content').range(from, to),
     ),
+    // RLS 때문에 내 프로필 한 줄만 돌아옴
+    check(await client.from('profiles').select('nickname').limit(1)) as { nickname: string | null }[],
   ])
 
+  const calendars = calendarRows.map(toCalendar)
+  const challenges = await fetchChallengeData(client, calendars.filter((c) => c.type !== 'personal').map((c) => c.id))
+
   return {
-    calendars: calendarRows.map(toCalendar),
+    calendars: calendars.map((c) => challenges.calendarPatch.get(c.id)?.(c) ?? c),
     records: activityRows.map((row) => toRecord(row, (row.activity_calendar_links ?? []).map((l) => l.calendar_id))),
+    friendRecords: challenges.friendRecords,
     memos: Object.fromEntries(memoRows.map((m) => [m.memo_date, m.content])),
+    nickname: profileRows[0]?.nickname ?? null,
   }
+}
+
+/** 내 로그인 id (멤버 목록에서 '나'를 찾는 데 씀) */
+async function myUserId(client: SupabaseClient): Promise<string> {
+  const { data } = await client.auth.getSession()
+  const id = data.session?.user.id
+  if (!id) throw new Error('로그인이 필요해요.')
+  return id
+}
+
+/**
+ * 챌린지 멤버와 친구 기록 불러오기 (화면에 들어갈 때·새로고침할 때)
+ * - 멤버 색은 참여 순서대로 정해서 사람마다 늘 같은 색
+ * - 내 기록은 원본(records)에 이미 있으므로 친구 기록만 따로 돌려줌
+ */
+export async function fetchChallengeData(client: SupabaseClient, calendarIds: string[]) {
+  const calendarPatch = new Map<string, (c: HabitCalendar) => HabitCalendar>()
+  if (calendarIds.length === 0) return { calendarPatch, friendRecords: [] as ActivityRecord[] }
+
+  const [me, memberRows, recordRows] = await Promise.all([
+    myUserId(client),
+    client.rpc('get_challenge_members', { p_calendar_ids: calendarIds }).then((r) => check(r) as MemberRow[]),
+    client.rpc('get_challenge_records', { p_calendar_ids: calendarIds }).then((r) => check(r) as ChallengeRecordRow[]),
+  ])
+
+  for (const id of calendarIds) {
+    const rows = (memberRows ?? []).filter((m) => m.calendar_id === id)
+    const members: Member[] = rows.map((m, index) => ({
+      id: m.user_id === me ? ME_ID : m.user_id,
+      name: m.user_id === me ? `${m.nickname} (나)` : m.nickname,
+      color: COLOR_OPTIONS[index % COLOR_OPTIONS.length],
+      isMe: m.user_id === me,
+    }))
+    const role = rows.find((m) => m.user_id === me)?.role
+    calendarPatch.set(id, (c) => ({ ...c, members, memberIds: members.map((m) => m.id), role }))
+  }
+
+  // 같은 활동이 내가 속한 챌린지 여러 개에 연결돼 있으면 하나로 묶음
+  const byActivity = new Map<string, ActivityRecord>()
+  for (const r of recordRows ?? []) {
+    if (r.owner_id === me) continue
+    const existing = byActivity.get(r.activity_id)
+    if (existing) {
+      existing.calendarIds.push(r.calendar_id)
+      continue
+    }
+    byActivity.set(r.activity_id, {
+      id: r.activity_id,
+      memberId: r.owner_id,
+      date: r.activity_date,
+      amount: Number(r.amount),
+      unit: r.unit,
+      calendarIds: [r.calendar_id],
+      primaryCalendarId: r.calendar_id,
+    })
+  }
+  return { calendarPatch, friendRecords: [...byActivity.values()] }
+}
+
+/** 챌린지 만들기 (캘린더 + 방장 멤버십 + 닉네임을 서버 함수 하나로) */
+export async function createChallenge(client: SupabaseClient, input: ChallengeInput, nickname: string, sortOrder: number) {
+  const row = must(
+    await client
+      .rpc('create_challenge', {
+        p_type: input.type,
+        p_name: input.name,
+        p_icon: input.icon,
+        p_color: input.color,
+        p_unit: input.unit,
+        p_target: input.target ?? null,
+        p_start_date: input.startDate,
+        p_end_date: input.endDate,
+        p_nickname: nickname,
+        p_sort_order: sortOrder,
+      })
+      .single<CalendarRow>(),
+  )
+  const { calendarPatch } = await fetchChallengeData(client, [row.id])
+  const calendar = toCalendar(row)
+  return calendarPatch.get(row.id)?.(calendar) ?? calendar
+}
+
+/** 지금 쓸 수 있는 초대 링크 (없으면 null) — 방장만 */
+export async function getActiveInvite(client: SupabaseClient, calendarId: string): Promise<ActiveInvite | null> {
+  const rows = check(await client.rpc('get_active_invite', { p_calendar_id: calendarId })) as { token: string; expires_at: string }[]
+  const row = rows?.[0]
+  return row ? { token: row.token, expiresAt: row.expires_at } : null
+}
+
+/** 새 초대 링크 (예전 링크는 자동 취소, 7일 유효) — 방장만 */
+export async function createInvite(client: SupabaseClient, calendarId: string): Promise<ActiveInvite> {
+  const rows = check(await client.rpc('create_invite', { p_calendar_id: calendarId })) as { token: string; expires_at: string }[]
+  if (!rows?.[0]) throw new Error('초대 링크를 만들지 못했어요.')
+  return { token: rows[0].token, expiresAt: rows[0].expires_at }
+}
+
+export async function revokeInvite(client: SupabaseClient, calendarId: string) {
+  check(await client.rpc('revoke_invite', { p_calendar_id: calendarId }))
+}
+
+/** 초대 미리보기 (로그인 전에도 됨) */
+export async function previewInvite(client: SupabaseClient, token: string): Promise<InvitePreview> {
+  return check(await client.rpc('preview_invite', { p_token: token })) as InvitePreview
+}
+
+/** 초대 수락 → 참여한 챌린지 id */
+export async function acceptInvite(client: SupabaseClient, token: string, nickname: string) {
+  const result = check(await client.rpc('accept_invite', { p_token: token, p_nickname: nickname })) as {
+    status: 'joined' | 'member'
+    calendar_id: string
+  }
+  return result
+}
+
+/** 챌린지 나가기: 서버가 이 챌린지 연결만 끊고, 내 활동 원본은 그대로 둠 */
+export async function leaveChallenge(client: SupabaseClient, calendarId: string) {
+  check(await client.rpc('leave_challenge', { p_calendar_id: calendarId }))
+}
+
+export async function setNickname(client: SupabaseClient, nickname: string): Promise<string> {
+  return check(await client.rpc('set_nickname', { p_nickname: nickname })) as string
 }
 
 /**

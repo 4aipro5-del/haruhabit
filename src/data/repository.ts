@@ -1,4 +1,4 @@
-import type { ActivityRecord, Member } from '../types'
+import type { ActivityRecord, HabitCalendar, Member } from '../types'
 import type { StoredData } from './storage'
 import { ME_ID, sampleCalendars, sampleFriendRecords, sampleMembers, sampleMemos, sampleMyRecords } from './sampleData'
 
@@ -22,6 +22,11 @@ export function getFriendRecords(): ActivityRecord[] {
 
 export function getMembers(ids: string[]): Member[] {
   return ids.map((id) => sampleMembers.find((m) => m.id === id)).filter((m): m is Member => Boolean(m))
+}
+
+/** 캘린더 멤버: 클라우드 챌린지는 실제 멤버, 그 밖에는 예시 멤버 */
+export function calendarMembers(calendar: HabitCalendar): Member[] {
+  return calendar.members ?? getMembers(calendar.memberIds)
 }
 
 export function getMe(): Member {

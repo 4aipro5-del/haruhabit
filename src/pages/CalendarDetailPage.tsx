@@ -1,5 +1,6 @@
+import { useEffect } from 'react'
 import type { DateKey } from '../types'
-import { getMembers } from '../data/repository'
+import { calendarMembers } from '../data/repository'
 import { useData } from '../data/DataProvider'
 import { hrefFor } from '../lib/router'
 import { LinkButton } from '../components/ui/Buttons'
@@ -9,8 +10,16 @@ import { SharedDetailPage } from './SharedDetailPage'
 
 /** 캘린더 유형에 맞는 상세 화면을 골라 보여줍니다. */
 export function CalendarDetailPage({ id, today }: { id: string; today: DateKey }) {
-  const { getCalendar, recordsOf } = useData()
+  const { getCalendar, recordsOf, refreshChallenge } = useData()
   const calendar = getCalendar(id)
+  const isChallenge = Boolean(calendar && calendar.type !== 'personal')
+
+  // 챌린지 화면에 들어올 때마다 친구들의 최신 기록·멤버를 받아 옴 (실시간 동기화는 아님)
+  useEffect(() => {
+    if (isChallenge) void refreshChallenge(id).catch(() => {})
+    // 화면에 들어올 때 한 번만
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id, isChallenge])
 
   if (!calendar) {
     return (
@@ -22,7 +31,7 @@ export function CalendarDetailPage({ id, today }: { id: string; today: DateKey }
   }
 
   const records = recordsOf(calendar.id)
-  const members = getMembers(calendar.memberIds)
+  const members = calendarMembers(calendar)
 
   switch (calendar.type) {
     case 'personal':

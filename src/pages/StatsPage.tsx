@@ -1,6 +1,6 @@
 import { CalendarDays } from 'lucide-react'
 import type { ActivityRecord, DateKey, HabitCalendar } from '../types'
-import { getMembers } from '../data/repository'
+import { calendarMembers } from '../data/repository'
 import { useData } from '../data/DataProvider'
 import { ME_ID } from '../data/sampleData'
 import { COLOR_STYLES } from '../lib/colors'
@@ -45,7 +45,7 @@ export function StatsPage({ today }: { today: DateKey }) {
               key={calendar.id}
               calendar={calendar}
               summary={summarizeCalendar(calendar, records, today)}
-              members={getMembers(calendar.memberIds)}
+              members={calendarMembers(calendar)}
             />
           ))}
         </div>

@@ -4,14 +4,13 @@ import type { ActivityRecord, DateKey, HabitCalendar, Member } from '../types'
 import { COLOR_STYLES } from '../lib/colors'
 import { memberTotals, sumAmount } from '../lib/stats'
 import { daysLeft } from '../lib/summary'
-import { formatAmount, formatNumber, formatPercent } from '../lib/units'
+import { formatAmount, formatPercent } from '../lib/units'
 import { DetailHeader } from '../components/layout/DetailHeader'
 import { PeriodChips } from '../components/layout/PeriodChips'
 import { ChallengeActions } from '../components/calendar/ChallengeActions'
 import { ChallengeCalendarSection } from '../components/calendar/ChallengeCalendarSection'
 import { Card, CardTitle } from '../components/ui/Card'
 import { Avatar } from '../components/ui/Badges'
-import { ComingSoonNote } from '../components/ui/Buttons'
 import { ProgressBar } from '../components/ui/ProgressBar'
 
 interface Props {
@@ -37,17 +36,17 @@ export function SharedDetailPage({ calendar, records, members, today }: Props) {
       <DetailHeader
         calendar={calendar}
         meta={<PeriodChips calendar={calendar} today={today} />}
-        actions={<ChallengeActions />}
+        actions={<ChallengeActions calendar={calendar} />}
       />
 
       <Card tint={c.tint}>
         <p className="flex items-center gap-1.5 text-sm font-medium text-ink-500">
           <Flag size={15} />
-          {calendar.goals[0]}
+          {calendar.goals[0] ?? `함께 ${formatAmount(target, calendar.unit)} 달성하기`}
         </p>
         <div className="mt-3 flex flex-wrap items-end justify-between gap-2">
           <p className="text-ink-900">
-            <span className="text-4xl font-bold tracking-tight sm:text-5xl">{formatNumber(total)}</span>
+            <span className="text-4xl font-bold tracking-tight sm:text-5xl">{formatAmount(total, calendar.unit)}</span>
             <span className="ml-1 text-lg font-semibold text-ink-500">/ {formatAmount(target, calendar.unit)}</span>
           </p>
           <p className={`text-3xl font-bold ${c.text}`}>{formatPercent(rate)}</p>
@@ -92,9 +91,6 @@ export function SharedDetailPage({ calendar, records, members, today }: Props) {
             )
           })}
         </ul>
-        <div className="mt-5 border-t border-cream-200 pt-4">
-          <ComingSoonNote>친구 초대는 다음 단계에서 구현 예정이에요.</ComingSoonNote>
-        </div>
       </Card>
 
       <ChallengeCalendarSection calendar={calendar} records={records} members={members} today={today} />

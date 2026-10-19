@@ -3,7 +3,7 @@ import { ME_ID } from '../data/sampleData'
 import { diffDays } from './date'
 import { ranking, sumAmount, weeklyProgress } from './stats'
 import { formatAmount, formatFrequency, formatPercent } from './units'
-import { getMembers } from '../data/repository'
+import { calendarMembers } from '../data/repository'
 
 export interface CalendarSummary {
   /** 카드 상단에 보여줄 짧은 설명 (주 3회, 4명 등) */
@@ -26,7 +26,7 @@ export function summarizeCalendar(calendar: HabitCalendar, records: ActivityReco
     }
   }
 
-  const members = getMembers(calendar.memberIds)
+  const members = calendarMembers(calendar)
   const target = calendar.target ?? 1
 
   if (calendar.type === 'shared') {
@@ -39,12 +39,16 @@ export function summarizeCalendar(calendar: HabitCalendar, records: ActivityReco
     }
   }
 
-  const rows = ranking(members, records, target)
+  // 1인 목표량이 없는 경쟁은 1위 대비로 막대를 그리고, 글자는 순위·누적량만
+  const leader = Math.max(...ranking(members, records, 1).map((r) => r.total), 0)
+  const rows = ranking(members, records, calendar.target ?? (leader || 1))
   const mine = rows.find((r) => r.member.id === ME_ID)
   return {
     meta: `${members.length}명`,
     rate: mine?.rate ?? 0,
-    progressLabel: mine ? `${mine.rank}위 · ${formatPercent(mine.rate)}` : '-',
+    progressLabel: mine
+      ? `${mine.rank}위 · ${calendar.target ? formatPercent(mine.rate) : formatAmount(mine.total, calendar.unit)}`
+      : '-',
     progressCaption: '나의 순위',
   }
 }

@@ -10,6 +10,8 @@ export type Route =
   | { name: 'calendar'; id: string }
   | { name: 'new' }
   | { name: 'edit'; id: string }
+  /** 초대 링크: #/join/토큰 */
+  | { name: 'join'; token: string }
 
 export function parseHash(hash: string): Route {
   const path = hash.replace(/^#/, '') || '/'
@@ -17,6 +19,8 @@ export function parseHash(hash: string): Route {
   if (match) return { name: 'calendar', id: decodeURIComponent(match[1]) }
   const edit = path.match(/^\/edit\/([^/]+)$/)
   if (edit) return { name: 'edit', id: decodeURIComponent(edit[1]) }
+  const join = path.match(/^\/join\/([A-Za-z0-9_-]+)$/)
+  if (join) return { name: 'join', token: join[1] }
   if (path === '/new') return { name: 'new' }
   if (path === '/stats') return { name: 'stats' }
   if (path === '/settings') return { name: 'settings' }
@@ -37,6 +41,8 @@ export function hrefFor(route: Route): string {
       return `#/calendar/${encodeURIComponent(route.id)}`
     case 'edit':
       return `#/edit/${encodeURIComponent(route.id)}`
+    case 'join':
+      return `#/join/${route.token}`
   }
 }
 

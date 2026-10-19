@@ -14,6 +14,8 @@ import { StatsPage } from './pages/StatsPage'
 import { SettingsPage } from './pages/SettingsPage'
 import { CalendarDetailPage } from './pages/CalendarDetailPage'
 import { CalendarFormPage } from './pages/CalendarFormPage'
+import { JoinPage } from './pages/JoinPage'
+import { getPendingInvite } from './lib/invite'
 
 export default function App() {
   return (
@@ -37,10 +39,22 @@ function Screens() {
 
   const goHome = () => (window.location.hash = hrefFor({ name: 'home' }))
 
-  // 메일 링크(가입 확인·비밀번호 재설정)로 돌아오면 설정 › 계정으로 안내
+  // 메일 링크(가입 확인·비밀번호 재설정)로 돌아오면 설정 › 계정으로 안내.
+  // 단, 초대 링크로 들어왔다가 가입·로그인한 경우에는 초대 화면으로 돌아감
   useEffect(() => {
-    if (notice) window.location.hash = hrefFor({ name: 'settings' })
+    if (!notice) return
+    const invite = notice === 'confirmed' ? getPendingInvite() : null
+    window.location.hash = invite ? hrefFor({ name: 'join', token: invite }) : hrefFor({ name: 'settings' })
   }, [notice])
+
+  // 초대 화면에서 로그인하러 나갔다가(다른 화면에서) 로그인하면 초대 화면으로 돌아감
+  useEffect(() => {
+    if (!user) return
+    const invite = getPendingInvite()
+    if (invite && route.name !== 'join') window.location.hash = hrefFor({ name: 'join', token: invite })
+    // 로그인한 순간에만 확인 (화면을 옮길 때마다 끌려가지 않게)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id])
 
   // 계정이 바뀌면 캘린더 선택을 처음으로
   useEffect(() => setFilter('all'), [user?.id])
@@ -53,7 +67,9 @@ function Screens() {
 
   const editing = route.name === 'edit' ? getCalendar(route.id) : undefined
   // 클라우드 기록을 불러오는 중이거나 실패하면, 빈 화면 대신 상태를 보여 줌 (설정 화면은 그대로 사용 가능)
-  const blocked = mode === 'cloud' && (loading || loadError) && route.name !== 'settings'
+  const blocked = mode === 'cloud' && (loading || loadError) && route.name !== 'settings' && route.name !== 'join'
+  // 개인 캘린더, 또는 내가 방장인 챌린지만 수정할 수 있음
+  const canEdit = Boolean(editing && (editing.type === 'personal' || editing.role === 'owner'))
 
   return (
     <AppShell route={route} filter={filter} onFilterChange={changeFilter}>
@@ -84,7 +100,8 @@ function Screens() {
             {route.name === 'stats' && <StatsPage today={today} />}
             {route.name === 'settings' && <SettingsPage />}
             {route.name === 'calendar' && <CalendarDetailPage id={route.id} today={today} />}
-            {(route.name === 'new' || (route.name === 'edit' && editing?.type === 'personal')) && (
+            {route.name === 'join' && <JoinPage key={route.token} token={route.token} />}
+            {(route.name === 'new' || (route.name === 'edit' && canEdit)) && (
               <CalendarFormPage
                 key={route.name === 'edit' ? route.id : 'new'}
                 today={today}
@@ -97,8 +114,8 @@ function Screens() {
                 onCancel={() => window.history.back()}
               />
             )}
-            {route.name === 'edit' && editing?.type !== 'personal' && (
-              <p className="py-20 text-center text-ink-500">수정할 수 있는 개인 캘린더를 찾을 수 없어요.</p>
+            {route.name === 'edit' && !canEdit && (
+              <p className="py-20 text-center text-ink-500">수정할 수 있는 캘린더를 찾을 수 없어요. (챌린지는 방장만 수정할 수 있어요)</p>
             )}
           </div>
         </Paper>

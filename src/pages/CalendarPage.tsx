@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
-import type { ActivityRecord, DateKey } from '../types'
+import type { ActivityRecord, DateKey, HabitCalendar } from '../types'
 import type { CalendarFilter } from '../components/layout/Sidebar'
 import { useData } from '../data/DataProvider'
 import { formatMonthLabel, parseKey, shiftMonth } from '../lib/date'
@@ -10,6 +10,23 @@ import { Paper } from '../components/layout/Paper'
 import { DiaryCalendar } from '../components/diary/DiaryCalendar'
 import { DayDetail } from '../components/diary/DayDetail'
 import { RecordDialog } from '../components/diary/RecordDialog'
+
+/**
+ * 연결된 캘린더가 하나도 없는 기록 (예: 챌린지에서 나가서 연결만 끊긴 기록)
+ * 원본은 보존되므로 전체 보기에서 회색 점으로 보여 주고, 수정해서 다른 캘린더에 다시 연결하거나 지울 수 있어요.
+ */
+const UNLINKED: HabitCalendar = {
+  id: '__unlinked',
+  name: '연결 없음',
+  description: '',
+  type: 'personal',
+  icon: 'sprout',
+  color: 'slate',
+  unit: 'check',
+  goals: [],
+  memberIds: [],
+  startDate: '',
+}
 
 interface CalendarPageProps {
   today: DateKey
@@ -30,7 +47,10 @@ export function CalendarPage({ today, filter }: CalendarPageProps) {
   const visibleRecords = recordsForFilter(diary.myRecords, filter).filter((r) => r.amount > 0)
 
   /** 점 색깔을 정할 캘린더: 개별 보기면 그 캘린더, 전체 보기면 활동의 대표 캘린더 */
-  const dotCalendarOf = (record: ActivityRecord) => filterCalendar ?? primaryCalendar(record, calendars)
+  const dotCalendarOf = (record: ActivityRecord) =>
+    filterCalendar ?? primaryCalendar(record, calendars) ?? (record.calendarIds.length === 0 ? UNLINKED : undefined)
+  // 점·목록 순서: 캘린더 목록 순, '연결 없음'은 맨 뒤
+  const orderOf = (cal: HabitCalendar) => (cal === UNLINKED ? calendars.length : calendars.indexOf(cal))
 
   // 날짜별로 점을 찍을 캘린더 id. 같은 활동이 여러 캘린더에 연결돼도 점은 하나입니다.
   const dotIdsByDate = new Map<DateKey, Set<string>>()
@@ -50,7 +70,7 @@ export function CalendarPage({ today, filter }: CalendarPageProps) {
     .filter((r) => r.date === selected)
     .map((record) => ({ record, calendar: dotCalendarOf(record)! }))
     .filter((item) => item.calendar)
-    .sort((a, b) => calendars.indexOf(a.calendar) - calendars.indexOf(b.calendar))
+    .sort((a, b) => orderOf(a.calendar) - orderOf(b.calendar))
 
   const selectDate = (date: DateKey) => {
     setSelected(date)
@@ -95,7 +115,7 @@ export function CalendarPage({ today, filter }: CalendarPageProps) {
             onSelect={selectDate}
             calendarsOn={(date) => {
               const ids = dotIdsByDate.get(date)
-              return ids ? calendars.filter((c) => ids.has(c.id)) : []
+              return ids ? [...calendars, UNLINKED].filter((c) => ids.has(c.id)) : []
             }}
           />
         </section>

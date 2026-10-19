@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
-import type { ActivityRecord, CalendarInput, DateKey, HabitCalendar, RecordInput } from '../types'
+import type { ActivityRecord, CalendarInput, ChallengeInput, DateKey, HabitCalendar, RecordInput } from '../types'
 import { ME_ID } from './sampleData'
 import { createSampleData, getFriendRecords } from './repository'
 import { loadData, saveData, type StoredData } from './storage'
@@ -50,7 +50,24 @@ interface DataContextValue {
   deleteCalendar: (id: string) => Promise<void>
   /** 이 브라우저의 로컬 데이터를 예시로 되돌리기 (로그인 안 했을 때만) */
   resetToSample: () => void
+
+  // ---- 친구와 함께하는 챌린지 (로그인했을 때만) ----
+  /** 친구에게 보이는 내 닉네임 (없으면 null) */
+  nickname: string | null
+  setNickname: (nickname: string) => Promise<void>
+  createChallenge: (input: ChallengeInput, nickname: string) => Promise<HabitCalendar>
+  /** 챌린지 멤버·친구 기록을 서버에서 다시 받아 옴 (화면에 들어갈 때) */
+  refreshChallenge: (id: string) => Promise<void>
+  /** 챌린지 나가기: 이 챌린지 연결만 끊고, 내 활동 원본은 그대로 둠 */
+  leaveChallenge: (id: string) => Promise<void>
+  /** 초대 수락 → 참여한 챌린지 id */
+  acceptInvite: (token: string, nickname: string) => Promise<string>
+  getActiveInvite: (id: string) => Promise<cloud.ActiveInvite | null>
+  createInvite: (id: string) => Promise<cloud.ActiveInvite>
+  revokeInvite: (id: string) => Promise<void>
 }
+
+const LOGIN_REQUIRED = '로그인하면 친구와 함께하는 챌린지를 쓸 수 있어요.'
 
 const DataContext = createContext<DataContextValue | null>(null)
 
@@ -65,6 +82,36 @@ function withoutCalendar<T extends { calendars: HabitCalendar[]; records: Activi
     })
     .filter((r) => r.calendarIds.length > 0)
   return { ...state, calendars, records }
+}
+
+/** 챌린지에서 나간 뒤의 상태: 연결만 빼고 활동 원본은 남김 (연결이 0개가 돼도 보존) */
+function withoutChallengeLinks<T extends { calendars: HabitCalendar[]; records: ActivityRecord[] }>(state: T, id: string): T {
+  const calendars = state.calendars.filter((c) => c.id !== id)
+  const records = state.records.map((r) => {
+    if (!r.calendarIds.includes(id)) return r
+    const calendarIds = r.calendarIds.filter((x) => x !== id)
+    const primary = calendarIds.length ? pickPrimaryCalendarId(calendarIds, calendars, r.primaryCalendarId) : ''
+    return { ...r, calendarIds, primaryCalendarId: primary }
+  })
+  return { ...state, calendars, records }
+}
+
+/**
+ * 한 챌린지의 친구 기록만 새것으로 바꿈.
+ * 친구의 같은 활동이 내가 속한 다른 챌린지에도 연결돼 있으면 그 연결은 유지합니다.
+ */
+function mergeFriendRecords(prev: ActivityRecord[], calendarId: string, fresh: ActivityRecord[]): ActivityRecord[] {
+  const kept = new Map<string, ActivityRecord>()
+  for (const r of prev) {
+    const calendarIds = r.calendarIds.filter((x) => x !== calendarId)
+    if (calendarIds.length) kept.set(r.id, { ...r, calendarIds, primaryCalendarId: calendarIds[0] })
+  }
+  for (const r of fresh) {
+    const existing = kept.get(r.id)
+    if (existing) kept.set(r.id, { ...existing, calendarIds: [...existing.calendarIds, calendarId] })
+    else kept.set(r.id, r)
+  }
+  return [...kept.values()]
 }
 
 /** 개인 캘린더 묶음의 맨 끝(챌린지 앞)에 끼워 넣기 */
@@ -131,9 +178,18 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const value = useMemo<DataContextValue>(() => {
     if (mode === 'cloud' && supabase && userId) {
       const client = supabase
-      const data = cloudData ?? { calendars: [], records: [], memos: {} }
-      const { calendars, records, memos } = data
+      const data = cloudData ?? { calendars: [], records: [], friendRecords: [], memos: {}, nickname: null }
+      const { calendars, records, friendRecords, memos } = data
+      // 캘린더별 통계용: 내 기록 + 같은 챌린지 친구 기록 (친구 기록은 챌린지에만 연결돼 있음)
+      const allRecords = [...records, ...friendRecords]
       const patch = (fn: (prev: cloud.CloudData) => cloud.CloudData) => setCloudData((prev) => (prev ? fn(prev) : prev))
+      /** 한 챌린지의 멤버·친구 기록을 새 값으로 바꿈 */
+      const applyChallenge = (id: string, result: Awaited<ReturnType<typeof cloud.fetchChallengeData>>) =>
+        patch((prev) => ({
+          ...prev,
+          calendars: prev.calendars.map((c) => (c.id === id ? (result.calendarPatch.get(id)?.(c) ?? c) : c)),
+          friendRecords: mergeFriendRecords(prev.friendRecords, id, result.friendRecords),
+        }))
 
       return {
         mode,
@@ -143,10 +199,10 @@ export function DataProvider({ children }: { children: ReactNode }) {
         sync,
         calendars,
         myRecords: records,
-        allRecords: records,
+        allRecords,
         memos,
         getCalendar: (id) => calendars.find((c) => c.id === id),
-        recordsOf: (calendarId) => records.filter((r) => r.calendarIds.includes(calendarId)),
+        recordsOf: (calendarId) => allRecords.filter((r) => r.calendarIds.includes(calendarId)),
 
         addRecord: async (input, id) => {
           const primary = pickPrimaryCalendarId(input.calendarIds, calendars)
@@ -188,17 +244,63 @@ export function DataProvider({ children }: { children: ReactNode }) {
           const current = calendars.find((c) => c.id === id)
           if (!current) throw new Error('캘린더를 찾을 수 없어요.')
           const saved = await track(() => cloud.updateCalendar(client, current, input))
-          patch((prev) => ({ ...prev, calendars: prev.calendars.map((c) => (c.id === id ? saved : c)) }))
+          // 챌린지면 멤버·역할 정보는 그대로 유지
+          const merged = { ...saved, members: current.members, memberIds: current.memberIds, role: current.role }
+          patch((prev) => ({ ...prev, calendars: prev.calendars.map((c) => (c.id === id ? merged : c)) }))
         },
 
         deleteCalendar: async (id) => {
           await track(() => cloud.deleteCalendar(client, id))
-          patch((prev) => withoutCalendar(prev, id))
+          patch((prev) => ({
+            ...withoutCalendar(prev, id),
+            friendRecords: prev.friendRecords.filter((r) => !r.calendarIds.includes(id)),
+          }))
         },
 
         resetToSample: () => {
           /* 로그인 중에는 클라우드 데이터를 건드리지 않음 */
         },
+
+        nickname: data.nickname,
+        setNickname: async (nickname) => {
+          const saved = await track(() => cloud.setNickname(client, nickname))
+          patch((prev) => ({ ...prev, nickname: saved }))
+          // 닉네임은 챌린지 멤버 목록에도 보이므로 다시 받아 옴
+          const ids = calendars.filter((c) => c.type !== 'personal').map((c) => c.id)
+          if (ids.length) {
+            const result = await cloud.fetchChallengeData(client, ids)
+            patch((prev) => ({ ...prev, calendars: prev.calendars.map((c) => result.calendarPatch.get(c.id)?.(c) ?? c) }))
+          }
+        },
+
+        createChallenge: async (input, nickname) => {
+          const created = await track(() => cloud.createChallenge(client, input, nickname, calendars.length))
+          patch((prev) => ({ ...prev, calendars: [...prev.calendars, created], nickname: nickname.trim() }))
+          return created
+        },
+
+        refreshChallenge: async (id) => {
+          applyChallenge(id, await cloud.fetchChallengeData(client, [id]))
+        },
+
+        leaveChallenge: async (id) => {
+          await track(() => cloud.leaveChallenge(client, id))
+          patch((prev) => ({
+            ...withoutChallengeLinks(prev, id),
+            friendRecords: prev.friendRecords.filter((r) => !r.calendarIds.includes(id)),
+          }))
+        },
+
+        acceptInvite: async (token, nickname) => {
+          const result = await track(() => cloud.acceptInvite(client, token, nickname))
+          // 새로 참여한 챌린지와 친구 기록을 받아 오려고 전체를 다시 불러옴
+          setCloudData(await cloud.fetchCloudData(client))
+          return result.calendar_id
+        },
+
+        getActiveInvite: (id) => cloud.getActiveInvite(client, id),
+        createInvite: (id) => track(() => cloud.createInvite(client, id)),
+        revokeInvite: (id) => track(() => cloud.revokeInvite(client, id)),
       }
     }
 
@@ -265,6 +367,29 @@ export function DataProvider({ children }: { children: ReactNode }) {
       deleteCalendar: async (id) => update((prev) => withoutCalendar(prev, id)),
 
       resetToSample: () => setLocal(createSampleData()),
+
+      // 로그인 전에는 예시 챌린지만 보이고, 친구 기능은 쓸 수 없음
+      nickname: null,
+      setNickname: async () => {
+        throw new Error(LOGIN_REQUIRED)
+      },
+      createChallenge: async () => {
+        throw new Error(LOGIN_REQUIRED)
+      },
+      refreshChallenge: async () => {},
+      leaveChallenge: async () => {
+        throw new Error(LOGIN_REQUIRED)
+      },
+      acceptInvite: async () => {
+        throw new Error(LOGIN_REQUIRED)
+      },
+      getActiveInvite: async () => null,
+      createInvite: async () => {
+        throw new Error(LOGIN_REQUIRED)
+      },
+      revokeInvite: async () => {
+        throw new Error(LOGIN_REQUIRED)
+      },
     }
   }, [mode, userId, local, cloudData, loading, loadError, reload, sync, track])
 

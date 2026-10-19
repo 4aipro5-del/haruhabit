@@ -7,11 +7,14 @@ import { addDays } from '../lib/date'
 import { CALENDAR_ICONS, ICON_OPTIONS, TYPE_META } from '../lib/icons'
 import { UNIT_META, UNIT_OPTIONS } from '../lib/units'
 import { Card } from '../components/ui/Card'
+import { hrefFor } from '../lib/router'
 
-// 개인 캘린더 만들기·수정·삭제 화면
-// 공동 목표·개인 경쟁 캘린더 만들기는 친구 초대가 필요해서 다음 단계에서 구현 예정입니다.
+// 캘린더 만들기·수정·삭제 화면
+// - 개인 캘린더: 실천 빈도 + 기록 방식 + 1회 목표량(선택)
+// - 챌린지(공동 목표·개인 경쟁): 로그인했을 때만 만들 수 있고, 기록 방식 + 목표량 + 기간(종료일 필수)
 
 interface FormState {
+  type: CalendarType
   name: string
   icon: IconKey
   color: ColorKey
@@ -22,6 +25,8 @@ interface FormState {
   startDate: DateKey
   endDate: DateKey
   noEndDate: boolean
+  /** 챌린지를 만들 때 친구에게 보일 닉네임 */
+  nickname: string
 }
 
 const TYPE_ORDER: CalendarType[] = ['personal', 'shared', 'competition']
@@ -35,9 +40,11 @@ interface CalendarFormPageProps {
   onCancel: () => void
 }
 
-function toForm(calendar: HabitCalendar | undefined, today: DateKey): FormState {
+function toForm(calendar: HabitCalendar | undefined, today: DateKey, nickname: string | null): FormState {
   if (!calendar) {
     return {
+      type: 'personal',
+      nickname: nickname ?? '',
       name: '',
       icon: 'sprout',
       color: 'leaf',
@@ -49,14 +56,18 @@ function toForm(calendar: HabitCalendar | undefined, today: DateKey): FormState 
       noEndDate: true,
     }
   }
+  // 개인 캘린더의 시간 목표량은 분으로, 챌린지 목표량(총 60시간 등)은 시간으로 보여 줌
+  const minutes = calendar.type === 'personal' && calendar.unit === 'hours'
   return {
+    type: calendar.type,
+    nickname: nickname ?? '',
     name: calendar.name,
     icon: calendar.icon,
     color: calendar.color,
     unit: calendar.unit,
     // 예전에 '매일'로 만든 캘린더는 주 7회로 보여 줌
     weeklyTimes: calendar.frequency?.kind === 'weekly' ? calendar.frequency.times : calendar.frequency?.kind === 'daily' ? 7 : 3,
-    target: calendar.target ? String(calendar.unit === 'hours' ? Math.round(calendar.target * 60) : calendar.target) : '',
+    target: calendar.target ? String(minutes ? Math.round(calendar.target * 60) : calendar.target) : '',
     startDate: calendar.startDate,
     endDate: calendar.endDate ?? addDays(today, 29),
     noEndDate: !calendar.endDate,
@@ -64,21 +75,28 @@ function toForm(calendar: HabitCalendar | undefined, today: DateKey): FormState 
 }
 
 export function CalendarFormPage({ today, calendar, onDone, onCancel }: CalendarFormPageProps) {
-  const { createCalendar, updateCalendar, deleteCalendar, myRecords } = useData()
+  const { createCalendar, createChallenge, updateCalendar, deleteCalendar, myRecords, recordsOf, mode, nickname } = useData()
   const isEdit = Boolean(calendar)
-  const [form, setForm] = useState<FormState>(() => toForm(calendar, today))
+  const [form, setForm] = useState<FormState>(() => toForm(calendar, today, nickname))
+  const isChallenge = form.type !== 'personal'
+  const otherMembers = Math.max((calendar?.members?.length ?? 1) - 1, 0)
   const [confirmDelete, setConfirmDelete] = useState(false)
   const update = <K extends keyof FormState>(key: K, value: FormState[K]) => setForm((f) => ({ ...f, [key]: value }))
 
   const linked = calendar ? myRecords.filter((r) => r.calendarIds.includes(calendar.id)) : []
-  // 기록이 있는 캘린더의 단위를 바꾸면 기존 기록과 맞지 않으므로 막습니다.
-  const unitLocked = linked.length > 0
-  const showTarget = form.unit !== 'check'
+  // 기록이 있는 캘린더의 단위를 바꾸면 기존 기록과 맞지 않으므로 막습니다. (챌린지는 친구 기록까지)
+  const linkedCount = calendar ? (isChallenge ? recordsOf(calendar.id).length : linked.length) : 0
+  const unitLocked = linkedCount > 0
+  // 개인: '했는지만'이면 목표량 없음 / 챌린지: 목표량 칸은 늘 있음 (했는지만이면 횟수)
+  const showTarget = isChallenge || form.unit !== 'check'
+  const inMinutes = !isChallenge && form.unit === 'hours'
   const targetInput = form.target.trim() === '' ? undefined : Number(form.target)
-  // 시간 기록의 목표량은 분으로 입력받고, 저장은 다른 기록처럼 시간 단위로 해요.
-  const targetValue = targetInput !== undefined && form.unit === 'hours' ? targetInput / 60 : targetInput
-  const targetValid = targetValue === undefined || (Number.isFinite(targetValue) && targetValue > 0)
-  const canSave = form.name.trim().length > 0 && (!showTarget || targetValid)
+  // 개인 캘린더의 시간 목표량은 분으로 입력받고, 저장은 다른 기록처럼 시간 단위로 해요.
+  const targetValue = targetInput !== undefined && inMinutes ? targetInput / 60 : targetInput
+  const targetValid = targetValue === undefined ? form.type !== 'shared' : Number.isFinite(targetValue) && targetValue > 0
+  const periodValid = !isChallenge || (Boolean(form.endDate) && form.endDate >= form.startDate)
+  const nicknameValid = !isChallenge || isEdit || form.nickname.trim().length > 0
+  const canSave = form.name.trim().length > 0 && (!showTarget || targetValid) && periodValid && nicknameValid
 
   const toInput = (): CalendarInput => {
     return {
@@ -87,12 +105,12 @@ export function CalendarFormPage({ today, calendar, onDone, onCancel }: Calendar
       icon: form.icon,
       color: form.color,
       unit: form.unit,
-      frequency: { kind: 'weekly', times: form.weeklyTimes },
+      frequency: isChallenge ? undefined : { kind: 'weekly', times: form.weeklyTimes },
       target: showTarget ? targetValue : undefined,
       // 세부 목표 입력은 없앴어요. 예전에 적어 둔 문장은 지우지 않고 그대로 둡니다.
       goals: calendar?.goals ?? [],
       startDate: form.startDate,
-      endDate: form.noEndDate ? undefined : form.endDate,
+      endDate: form.noEndDate && !isChallenge ? undefined : form.endDate,
     }
   }
 
@@ -108,6 +126,14 @@ export function CalendarFormPage({ today, calendar, onDone, onCancel }: Calendar
       if (calendar) {
         await updateCalendar(calendar.id, toInput())
         onDone(calendar.id)
+      } else if (form.type !== 'personal') {
+        const input = toInput()
+        const created = await createChallenge(
+          { type: form.type, name: input.name, icon: input.icon, color: input.color, unit: input.unit, target: input.target, startDate: input.startDate, endDate: form.endDate },
+          form.nickname,
+        )
+        // 만든 뒤에는 친구를 초대할 수 있는 챌린지 화면으로 (뒤로 가기에 만들기 화면이 남지 않게)
+        window.location.replace(hrefFor({ name: 'calendar', id: created.id }))
       } else {
         const created = await createCalendar(toInput())
         onDone(created.id)
@@ -143,23 +169,36 @@ export function CalendarFormPage({ today, calendar, onDone, onCancel }: Calendar
               <div className="grid gap-3 sm:grid-cols-3" role="radiogroup" aria-label="캘린더 유형">
                 {TYPE_ORDER.map((type) => {
                   const meta = TYPE_META[type]
-                  const active = type === 'personal'
+                  const active = form.type === type
+                  // 챌린지는 친구와 기록을 나누므로 로그인했을 때만 만들 수 있음
+                  const available = type === 'personal' || mode === 'cloud'
                   return (
                     <button
                       key={type}
                       type="button"
                       role="radio"
                       aria-checked={active}
-                      disabled={!active}
-                      title={active ? undefined : '다음 단계에서 구현 예정'}
+                      disabled={!available}
+                      onClick={() =>
+                        setForm((f) =>
+                          f.type === type
+                            ? f
+                            : { ...f, type, target: '', noEndDate: type === 'personal' ? f.noEndDate : false },
+                        )
+                      }
+                      title={available ? undefined : '로그인하면 만들 수 있어요'}
                       className={`flex flex-col items-start gap-2 rounded-2xl p-4 text-left ring-1 ${
-                        active ? 'bg-ink-900 text-cream-50 ring-ink-900' : 'cursor-not-allowed bg-cream-50 text-ink-400 ring-cream-300'
+                        active
+                          ? 'bg-ink-900 text-cream-50 ring-ink-900'
+                          : available
+                            ? 'bg-white text-ink-900 ring-cream-300 hover:bg-cream-50'
+                            : 'cursor-not-allowed bg-cream-50 text-ink-400 ring-cream-300'
                       }`}
                     >
                       <meta.icon size={20} />
                       <span className="text-base">{meta.label}</span>
-                      <span className={`text-sm ${active ? 'text-cream-200' : 'text-ink-400'}`}>
-                        {active ? meta.description : '친구 초대와 함께 다음 단계에서 구현 예정'}
+                      <span className={`text-sm ${active ? 'text-cream-200' : available ? 'text-ink-500' : 'text-ink-400'}`}>
+                        {available ? meta.description : '로그인하면 친구를 초대해 만들 수 있어요'}
                       </span>
                     </button>
                   )
@@ -233,31 +272,33 @@ export function CalendarFormPage({ today, calendar, onDone, onCancel }: Calendar
           </Section>
 
           <Section step={isEdit ? 2 : 3} title="목표">
-            {/* '매일'은 주 7회와 같아서 따로 두지 않고 주 1~7회로 고릅니다 */}
-            <Field label="실천 빈도">
-              <label className="inline-flex items-center gap-2 text-base text-ink-700">
-                주
-                <select
-                  value={form.weeklyTimes}
-                  onChange={(e) => update('weeklyTimes', Number(e.target.value))}
-                  className="rounded-xl border border-cream-300 bg-white px-3 py-2 text-base"
-                  aria-label="주당 횟수"
-                >
-                  {[1, 2, 3, 4, 5, 6, 7].map((n) => (
-                    <option key={n} value={n}>
-                      {n}
-                    </option>
-                  ))}
-                </select>
-                회
-              </label>
-            </Field>
+            {/* '매일'은 주 7회와 같아서 따로 두지 않고 주 1~7회로 고릅니다 (챌린지는 빈도 대신 목표량) */}
+            {!isChallenge && (
+              <Field label="실천 빈도">
+                <label className="inline-flex items-center gap-2 text-base text-ink-700">
+                  주
+                  <select
+                    value={form.weeklyTimes}
+                    onChange={(e) => update('weeklyTimes', Number(e.target.value))}
+                    className="rounded-xl border border-cream-300 bg-white px-3 py-2 text-base"
+                    aria-label="주당 횟수"
+                  >
+                    {[1, 2, 3, 4, 5, 6, 7].map((n) => (
+                      <option key={n} value={n}>
+                        {n}
+                      </option>
+                    ))}
+                  </select>
+                  회
+                </label>
+              </Field>
+            )}
 
             <Field
               label="기록 방식"
               help={
                 unitLocked
-                  ? `이 캘린더에 연결된 활동이 ${linked.length}개 있어서 기록 방식을 바꿀 수 없어요.`
+                  ? `이 캘린더에 연결된 활동이 ${linkedCount}개 있어서 기록 방식을 바꿀 수 없어요.`
                   : '양을 적고 싶으면 시간·거리 등을 골라 주세요. 기록할 때 이 칸이 나와요.'
               }
             >
@@ -272,9 +313,19 @@ export function CalendarFormPage({ today, calendar, onDone, onCancel }: Calendar
 
             {showTarget && (
               <Field
-                label="1회 목표량 (선택)"
+                label={form.type === 'shared' ? '함께 달성할 목표량' : form.type === 'competition' ? '1인 목표량 (선택)' : '1회 목표량 (선택)'}
                 htmlFor="cal-target"
-                help={targetValid ? '비워 두면 목표 없이 양만 기록해요.' : '0보다 큰 숫자를 넣거나 비워 주세요.'}
+                help={
+                  form.type === 'shared'
+                    ? targetValid
+                      ? '멤버 모두의 기록을 합쳐서 이 양을 채워요.'
+                      : '0보다 큰 목표량을 적어 주세요.'
+                    : !targetValid
+                      ? '0보다 큰 숫자를 넣거나 비워 주세요.'
+                      : form.type === 'competition'
+                        ? '비워 두면 목표 없이 누적량으로만 순위를 겨뤄요.'
+                        : '비워 두면 목표 없이 양만 기록해요.'
+                }
               >
                 <div className="flex items-center gap-2">
                   <input
@@ -288,7 +339,7 @@ export function CalendarFormPage({ today, calendar, onDone, onCancel }: Calendar
                     onChange={(e) => update('target', e.target.value)}
                     className="w-32 rounded-2xl border border-cream-300 bg-white px-4 py-3 text-base text-ink-900 placeholder:text-ink-300 focus:border-ink-500 focus:outline-none"
                   />
-                  <span className="text-base text-ink-700">{form.unit === 'hours' ? '분' : UNIT_META[form.unit].suffix}</span>
+                  <span className="text-base text-ink-700">{inMinutes ? '분' : UNIT_META[form.unit].suffix}</span>
                 </div>
               </Field>
             )}
@@ -311,27 +362,50 @@ export function CalendarFormPage({ today, calendar, onDone, onCancel }: Calendar
                   type="date"
                   value={form.endDate}
                   min={form.startDate}
-                  disabled={form.noEndDate}
+                  disabled={form.noEndDate && !isChallenge}
                   onChange={(e) => update('endDate', e.target.value)}
                   className="w-full rounded-2xl border border-cream-300 bg-white px-4 py-3 text-base text-ink-900 disabled:bg-cream-100 disabled:text-ink-300"
                 />
               </Field>
             </div>
-            <label className="inline-flex items-center gap-2 text-base text-ink-700">
-              <input
-                type="checkbox"
-                checked={form.noEndDate}
-                onChange={(e) => update('noEndDate', e.target.checked)}
-                className="h-4 w-4 accent-ink-900"
-              />
-              종료일 없이 계속 기록하기
-            </label>
+            {isChallenge ? (
+              <p className="text-sm text-ink-500">챌린지는 종료일이 꼭 필요해요. 기간 안의 기록만 챌린지에 반영돼요.</p>
+            ) : (
+              <label className="inline-flex items-center gap-2 text-base text-ink-700">
+                <input
+                  type="checkbox"
+                  checked={form.noEndDate}
+                  onChange={(e) => update('noEndDate', e.target.checked)}
+                  className="h-4 w-4 accent-ink-900"
+                />
+                종료일 없이 계속 기록하기
+              </label>
+            )}
           </Section>
 
+          {isChallenge && !isEdit && (
+            <Section step={5} title="친구에게 보일 닉네임">
+              <Field label="닉네임" htmlFor="cal-nickname" help="이메일 주소는 다른 멤버에게 보이지 않아요. 설정에서 언제든 바꿀 수 있어요.">
+                <input
+                  id="cal-nickname"
+                  type="text"
+                  value={form.nickname}
+                  maxLength={20}
+                  onChange={(e) => update('nickname', e.target.value)}
+                  placeholder="예: 지선"
+                  className="w-full max-w-sm rounded-2xl border border-cream-300 bg-white px-4 py-3 text-base text-ink-900 placeholder:text-ink-300 focus:border-ink-500 focus:outline-none"
+                />
+              </Field>
+            </Section>
+          )}
+
           <div className="flex flex-wrap items-center justify-between gap-3">
-            {isEdit ? (
+            {isEdit && isChallenge && otherMembers > 0 ? (
+              // 친구 기록이 함께 사라지지 않도록, 다른 멤버가 있으면 삭제할 수 없음 (서버에서도 막음)
+              <span className="px-3 py-2 text-sm text-ink-500">다른 멤버 {otherMembers}명이 있어서 삭제할 수 없어요</span>
+            ) : isEdit ? (
               <button type="button" onClick={() => setConfirmDelete(true)} className="rounded-lg px-3 py-2 text-sm text-sun hover:bg-line/50">
-                캘린더 삭제
+                {isChallenge ? '챌린지 삭제' : '캘린더 삭제'}
               </button>
             ) : (
               <span />

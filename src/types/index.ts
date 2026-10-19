@@ -53,6 +53,10 @@ export interface HabitCalendar {
   endDate?: DateKey
   /** 클라우드에 마지막으로 저장된 시각 (다른 기기와의 수정 충돌 감지용, 로컬 모드에서는 없음) */
   updatedAt?: string
+  /** 챌린지에서 내 역할 (클라우드 챌린지만). 방장만 수정·초대·삭제할 수 있어요. */
+  role?: 'owner' | 'member'
+  /** 챌린지 멤버 (클라우드 챌린지만, 참여 순). 없으면 memberIds 로 예시 멤버를 찾음 */
+  members?: Member[]
 }
 
 /**
@@ -93,3 +97,16 @@ export type CalendarInput = Pick<
   HabitCalendar,
   'name' | 'description' | 'icon' | 'color' | 'unit' | 'goals' | 'frequency' | 'target' | 'startDate' | 'endDate'
 >
+
+/** 챌린지(공동 목표·개인 경쟁) 만들기 화면에서 입력하는 값 */
+export interface ChallengeInput {
+  type: 'shared' | 'competition'
+  name: string
+  icon: IconKey
+  color: ColorKey
+  unit: GoalUnit
+  /** 공동: 전체 목표량(필수) / 경쟁: 1인 목표량(선택) */
+  target?: number
+  startDate: DateKey
+  endDate: DateKey
+}

@@ -3,6 +3,7 @@ import { ArrowLeft } from 'lucide-react'
 import type { HabitCalendar } from '../../types'
 import { hrefFor } from '../../lib/router'
 import { SampleDataNotice, TypeBadge } from '../ui/Badges'
+import { useData } from '../../data/DataProvider'
 import { CalendarIcon } from '../ui/CalendarIcon'
 
 interface DetailHeaderProps {
@@ -12,6 +13,7 @@ interface DetailHeaderProps {
 }
 
 export function DetailHeader({ calendar, meta, actions }: DetailHeaderProps) {
+  const { mode } = useData()
   return (
     <div className="mb-6">
       <a
@@ -37,7 +39,8 @@ export function DetailHeader({ calendar, meta, actions }: DetailHeaderProps) {
         {actions && <div className="flex flex-wrap gap-2">{actions}</div>}
       </div>
 
-      <SampleDataNotice className="mt-4" />
+      {/* 로그인 전(이 브라우저의 예시 데이터)일 때만 안내 */}
+      {mode === 'local' && <SampleDataNotice className="mt-4" />}
     </div>
   )
 }

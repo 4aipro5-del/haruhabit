@@ -36,7 +36,8 @@ export function SampleDataNotice({ className = '' }: { className?: string }) {
 export function Avatar({ member, size = 'md' }: { member: Member; size?: 'sm' | 'md' }) {
   const color = COLOR_STYLES[member.color]
   const sizeClass = size === 'sm' ? 'h-7 w-7 text-[11px]' : 'h-9 w-9 text-sm'
-  const initial = member.isMe ? '나' : member.name.replace('친구 ', '')
+  // 예시 친구는 'A', 실제 친구는 닉네임 첫 글자
+  const initial = member.isMe ? '나' : Array.from(member.name.replace('친구 ', ''))[0]
   return (
     <span
       className={`inline-flex shrink-0 items-center justify-center rounded-full font-semibold ring-2 ring-white ${color.medium} ${color.text} ${sizeClass}`}

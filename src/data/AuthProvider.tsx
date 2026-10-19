@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
 import type { Session, User } from '@supabase/supabase-js'
 import { friendlyError, initialUrl, isCloudConfigured, supabase } from '../lib/supabase'
+import { getPendingInvite } from '../lib/invite'
 
 // 로그인 상태와 회원가입·로그인·로그아웃·비밀번호 재설정
 
@@ -33,8 +34,11 @@ const AuthContext = createContext<AuthContextValue | null>(null)
  * 메일 링크가 돌아올 주소. # 주소 이동과 섞이지 않게 ?auth= 만 붙입니다.
  * GitHub Pages 처럼 하위 경로(/haru-habit-tracker/)에서 열려도 맞는 주소가 되도록 BASE_URL 을 붙입니다.
  */
-const redirectUrl = (kind: 'confirmed' | 'recovery') =>
-  `${window.location.origin}${import.meta.env.BASE_URL}?auth=${kind}`
+const redirectUrl = (kind: 'confirmed' | 'recovery') => {
+  // 초대 링크로 들어왔다가 가입·로그인하는 중이면, 메일 링크를 눌렀을 때 초대 화면으로 돌아오도록 함께 보냄
+  const invite = kind === 'confirmed' ? getPendingInvite() : null
+  return `${window.location.origin}${import.meta.env.BASE_URL}?auth=${kind}${invite ? `&invite=${invite}` : ''}`
+}
 
 async function run(fn: () => PromiseLike<{ data: unknown; error: unknown }>): Promise<unknown> {
   let result: { data: unknown; error: unknown }
