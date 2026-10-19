@@ -102,7 +102,7 @@ export const COLOR_STYLES: Record<
     ring: 'ring-rose-400',
   },
   sand: {
-    label: '호박',
+    label: '남색',
     tint: 'bg-sand-50',
     soft: 'bg-sand-100',
     medium: 'bg-sand-200',
@@ -139,7 +139,8 @@ export const COLOR_STYLES: Record<
   },
 }
 
-export const COLOR_OPTIONS: ColorKey[] = ['leaf', 'mint', 'olive', 'sky', 'slate', 'butter', 'sand', 'peach', 'rose', 'lilac']
+// 색상 고르기 칸 순서 (색 계열 순)
+export const COLOR_OPTIONS: ColorKey[] = ['leaf', 'olive', 'mint', 'sky', 'sand', 'lilac', 'rose', 'peach', 'butter', 'slate']
 
 export const TYPE_COLOR: Record<CalendarType, ColorKey> = {
   personal: 'leaf',

@@ -96,13 +96,14 @@
   --color-rose-600: #db2777; /* Tailwind pink-600 · 캘린더 대표색 */
   --color-rose-700: #a84863;
 
-  --color-sand-50: #faf6f0;
-  --color-sand-100: #f2e9dc;
-  --color-sand-200: #e6d5bd;
-  --color-sand-400: #cdb08a;
-  --color-sand-500: #bf9f78;
-  --color-sand-600: #d97706; /* Tailwind amber-600 · 캘린더 대표색 */
-  --color-sand-700: #7d6140;
+  /* sand: 노랑·주황과 겹치지 않게 Tailwind indigo 계열로 (키 이름은 저장된 데이터와 맞추려고 그대로) */
+  --color-sand-50: #eef2ff;
+  --color-sand-100: #e0e7ff;
+  --color-sand-200: #c7d2fe;
+  --color-sand-400: #818cf8;
+  --color-sand-500: #6366f1;
+  --color-sand-600: #4f46e5; /* Tailwind indigo-600 · 캘린더 대표색 */
+  --color-sand-700: #4338ca;
 
   --color-olive-50: #f6f8ee;
   --color-olive-100: #ebf0d8;
