@@ -221,7 +221,8 @@ export function CalendarFormPage({ today, calendar, onDone, onCancel }: Calendar
                       onClick={() => update('color', key)}
                       aria-pressed={active}
                       aria-label={COLOR_STYLES[key].label}
-                      className="flex flex-col items-center gap-1.5 text-xs text-ink-500"
+                      title={COLOR_STYLES[key].label}
+                      className="flex items-center justify-center rounded-full"
                     >
                       <span
                         className={`flex h-10 w-10 items-center justify-center rounded-full ${COLOR_STYLES[key].dot} ${
@@ -230,7 +231,6 @@ export function CalendarFormPage({ today, calendar, onDone, onCancel }: Calendar
                       >
                         {active && <Check size={18} className="text-white" />}
                       </span>
-                      {COLOR_STYLES[key].label}
                     </button>
                   )
                 })}
