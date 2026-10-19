@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { CalendarDays, ChartColumn, Cloud, HardDrive, Plus, Settings, Sprout } from 'lucide-react'
+import { CalendarDays, ChartColumn, Cloud, HardDrive, Settings, Sprout } from 'lucide-react'
 import { useAuth } from '../../data/AuthProvider'
 import { useData } from '../../data/DataProvider'
 import type { HabitCalendar } from '../../types'
@@ -54,15 +54,9 @@ export function SidebarContent({ route, calendars: allCalendars, filter, onFilte
 
       <div className="my-5 border-t border-line" />
 
-      <div className="mb-2 flex items-center justify-between px-3">
+      {/* 새 캘린더는 설정 › 캘린더 관리에서만 만들어요 */}
+      <div className="mb-2 flex h-7 items-center px-3">
         <span className="text-sm text-ink-700">내 캘린더</span>
-        <a
-          href={hrefFor({ name: 'new' })}
-          className="flex h-7 w-7 items-center justify-center rounded-full text-ink-700 hover:bg-line/60"
-          aria-label="새 캘린더 만들기"
-        >
-          <Plus size={17} strokeWidth={1.6} />
-        </a>
       </div>
 
       <ul className="flex flex-col gap-0.5" aria-label="달력에 표시할 캘린더">
