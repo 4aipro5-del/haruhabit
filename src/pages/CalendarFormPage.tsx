@@ -5,7 +5,7 @@ import { useData } from '../data/DataProvider'
 import { COLOR_OPTIONS, COLOR_STYLES } from '../lib/colors'
 import { addDays, formatMonthDay } from '../lib/date'
 import { CALENDAR_ICONS, ICON_OPTIONS, TYPE_META } from '../lib/icons'
-import { UNIT_META, UNIT_OPTIONS, formatAmount, formatFrequency } from '../lib/units'
+import { UNIT_META, UNIT_OPTIONS, goalSummary } from '../lib/units'
 import { Card } from '../components/ui/Card'
 import { TypeBadge } from '../components/ui/Badges'
 import { CalendarIcon } from '../components/ui/CalendarIcon'
@@ -19,9 +19,8 @@ interface FormState {
   color: ColorKey
   unit: GoalUnit
   weeklyTimes: number
-  /** 1회 목표량 (체크 단위면 없음) */
-  target: number
-  goalsText: string
+  /** 1회 목표량. 비워 두면 목표 없이 양만 기록 ('했는지만'이면 쓰지 않음) */
+  target: string
   startDate: DateKey
   endDate: DateKey
   noEndDate: boolean
@@ -46,8 +45,7 @@ function toForm(calendar: HabitCalendar | undefined, today: DateKey): FormState 
       color: 'leaf',
       unit: 'check',
       weeklyTimes: 3,
-      target: 1,
-      goalsText: '',
+      target: '',
       startDate: today,
       endDate: addDays(today, 29),
       noEndDate: true,
@@ -60,8 +58,7 @@ function toForm(calendar: HabitCalendar | undefined, today: DateKey): FormState 
     unit: calendar.unit,
     // 예전에 '매일'로 만든 캘린더는 주 7회로 보여 줌
     weeklyTimes: calendar.frequency?.kind === 'weekly' ? calendar.frequency.times : calendar.frequency?.kind === 'daily' ? 7 : 3,
-    target: calendar.target ?? 1,
-    goalsText: calendar.goals.join('\n'),
+    target: calendar.target ? String(calendar.target) : '',
     startDate: calendar.startDate,
     endDate: calendar.endDate ?? addDays(today, 29),
     noEndDate: !calendar.endDate,
@@ -79,15 +76,11 @@ export function CalendarFormPage({ today, calendar, onDone, onCancel }: Calendar
   // 기록이 있는 캘린더의 단위를 바꾸면 기존 기록과 맞지 않으므로 막습니다.
   const unitLocked = linked.length > 0
   const showTarget = form.unit !== 'check'
-  const frequencyLabel = `주 ${form.weeklyTimes}회`
-  const defaultGoal = `${frequencyLabel} ${form.name.trim() || '실천'}하기`
-  const canSave = form.name.trim().length > 0 && (!showTarget || form.target > 0)
+  const targetValue = form.target.trim() === '' ? undefined : Number(form.target)
+  const targetValid = targetValue === undefined || (Number.isFinite(targetValue) && targetValue > 0)
+  const canSave = form.name.trim().length > 0 && (!showTarget || targetValid)
 
   const toInput = (): CalendarInput => {
-    const goals = form.goalsText
-      .split('\n')
-      .map((g) => g.trim())
-      .filter(Boolean)
     return {
       name: form.name.trim(),
       description: calendar?.description ?? '',
@@ -95,8 +88,9 @@ export function CalendarFormPage({ today, calendar, onDone, onCancel }: Calendar
       color: form.color,
       unit: form.unit,
       frequency: { kind: 'weekly', times: form.weeklyTimes },
-      target: showTarget ? form.target : undefined,
-      goals: goals.length ? goals : [defaultGoal],
+      target: showTarget ? targetValue : undefined,
+      // 세부 목표 입력은 없앴어요. 예전에 적어 둔 문장은 지우지 않고 그대로 둡니다.
+      goals: calendar?.goals ?? [],
       startDate: form.startDate,
       endDate: form.noEndDate ? undefined : form.endDate,
     }
@@ -239,16 +233,6 @@ export function CalendarFormPage({ today, calendar, onDone, onCancel }: Calendar
           </Section>
 
           <Section step={isEdit ? 2 : 3} title="목표">
-            <Field label="기록 단위" help={unitLocked ? `이 캘린더에 연결된 활동이 ${linked.length}개 있어서 단위를 바꿀 수 없어요.` : undefined}>
-              <div className="flex flex-wrap gap-2">
-                {UNIT_OPTIONS.map((unit) => (
-                  <Pill key={unit} active={form.unit === unit} disabled={unitLocked && form.unit !== unit} onClick={() => update('unit', unit)}>
-                    {UNIT_META[unit].label}
-                  </Pill>
-                ))}
-              </div>
-            </Field>
-
             {/* '매일'은 주 7회와 같아서 따로 두지 않고 주 1~7회로 고릅니다 */}
             <Field label="실천 빈도">
               <label className="inline-flex items-center gap-2 text-sm text-ink-700">
@@ -269,8 +253,29 @@ export function CalendarFormPage({ today, calendar, onDone, onCancel }: Calendar
               </label>
             </Field>
 
+            <Field
+              label="기록 방식"
+              help={
+                unitLocked
+                  ? `이 캘린더에 연결된 활동이 ${linked.length}개 있어서 기록 방식을 바꿀 수 없어요.`
+                  : '양을 적고 싶으면 시간·거리 등을 골라 주세요. 기록할 때 이 칸이 나와요.'
+              }
+            >
+              <div className="flex flex-wrap gap-2">
+                {UNIT_OPTIONS.map((unit) => (
+                  <Pill key={unit} active={form.unit === unit} disabled={unitLocked && form.unit !== unit} onClick={() => update('unit', unit)}>
+                    {UNIT_META[unit].label}
+                  </Pill>
+                ))}
+              </div>
+            </Field>
+
             {showTarget && (
-              <Field label="1회 목표량" htmlFor="cal-target">
+              <Field
+                label="1회 목표량 (선택)"
+                htmlFor="cal-target"
+                help={targetValid ? '비워 두면 목표 없이 양만 기록해요.' : '0보다 큰 숫자를 넣거나 비워 주세요.'}
+              >
                 <div className="flex items-center gap-2">
                   <input
                     id="cal-target"
@@ -279,24 +284,14 @@ export function CalendarFormPage({ today, calendar, onDone, onCancel }: Calendar
                     step="any"
                     inputMode="decimal"
                     value={form.target}
-                    onChange={(e) => update('target', Number(e.target.value))}
-                    className="w-32 rounded-2xl border border-cream-300 bg-white px-4 py-3 text-sm text-ink-900 focus:border-ink-500 focus:outline-none"
+                    placeholder="없음"
+                    onChange={(e) => update('target', e.target.value)}
+                    className="w-32 rounded-2xl border border-cream-300 bg-white px-4 py-3 text-sm text-ink-900 placeholder:text-ink-300 focus:border-ink-500 focus:outline-none"
                   />
                   <span className="text-sm text-ink-700">{UNIT_META[form.unit].suffix}</span>
                 </div>
               </Field>
             )}
-
-            <Field label="세부 목표 (한 줄에 하나)" htmlFor="cal-goals">
-              <textarea
-                id="cal-goals"
-                rows={3}
-                value={form.goalsText}
-                onChange={(e) => update('goalsText', e.target.value)}
-                placeholder={defaultGoal}
-                className="w-full resize-none rounded-2xl border border-cream-300 bg-white px-4 py-3 text-sm leading-relaxed text-ink-900 placeholder:text-ink-300 focus:border-ink-500 focus:outline-none"
-              />
-            </Field>
           </Section>
 
           <Section step={isEdit ? 3 : 4} title="목표 기간">
@@ -387,8 +382,8 @@ export function CalendarFormPage({ today, calendar, onDone, onCancel }: Calendar
 
 function Preview({ form }: { form: FormState }) {
   const c = COLOR_STYLES[form.color]
-  const frequency = formatFrequency({ kind: 'weekly', times: form.weeklyTimes })
-  const goalText = form.unit === 'check' ? `${frequency} 체크하기` : `${frequency} · 한 번에 ${formatAmount(form.target, form.unit)}`
+  const target = form.unit !== 'check' && Number(form.target) > 0 ? Number(form.target) : undefined
+  const goalText = goalSummary({ frequency: { kind: 'weekly', times: form.weeklyTimes }, unit: form.unit, target })
 
   return (
     <div className={`rounded-3xl p-5 ring-1 ring-inset ${c.tint} ${c.ringSoft}`}>
@@ -403,7 +398,7 @@ function Preview({ form }: { form: FormState }) {
           <dd className="text-right text-ink-900">{goalText}</dd>
         </div>
         <div className="flex justify-between gap-3">
-          <dt className="text-ink-500">단위</dt>
+          <dt className="text-ink-500">기록</dt>
           <dd className="text-ink-900">{UNIT_META[form.unit].label}</dd>
         </div>
         <div className="flex justify-between gap-3">

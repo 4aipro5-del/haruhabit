@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
 import { Check } from 'lucide-react'
-import type { GoalUnit, HabitCalendar, RecordInput } from '../../types'
+import type { HabitCalendar, RecordInput } from '../../types'
 import { COLOR_STYLES } from '../../lib/colors'
 import { isInPeriod } from '../../lib/activity'
-import { UNIT_META, UNIT_OPTIONS } from '../../lib/units'
+import { UNIT_META } from '../../lib/units'
 
 interface RecordDialogProps {
   calendars: HabitCalendar[]
@@ -18,11 +18,11 @@ interface RecordDialogProps {
 /**
  * 활동 추가·수정 팝업
  * 활동은 한 번만 입력하고, 반영할 캘린더를 여러 개 고릅니다.
- * 단위가 다른 캘린더나 챌린지 기간 밖의 캘린더는 고를 수 없습니다.
+ * 입력 칸(시간·km 등)은 고른 캘린더의 기록 방식을 따릅니다.
+ * 기록 방식이 다른 캘린더나 기간 밖의 캘린더는 함께 고를 수 없습니다.
  */
 export function RecordDialog({ calendars, initial, isEdit, onSave, onClose }: RecordDialogProps) {
   const [date, setDate] = useState(initial.date)
-  const [unit, setUnit] = useState<GoalUnit>(initial.unit)
   const [hours, setHours] = useState(initial.amount ? String(Math.floor(initial.amount)) : '')
   const [minutes, setMinutes] = useState(initial.amount ? String(Math.round((initial.amount % 1) * 60)) : '')
   const [value, setValue] = useState(initial.amount ? String(initial.amount) : '')
@@ -32,22 +32,33 @@ export function RecordDialog({ calendars, initial, isEdit, onSave, onClose }: Re
   const submitting = useRef(false)
   const [error, setError] = useState<string | null>(null)
 
+  // 기록 방식은 처음 고른 캘린더를 따릅니다 (기간 밖 캘린더는 빼고)
+  const firstPicked = selected
+    .map((id) => calendars.find((c) => c.id === id))
+    .find((cal): cal is HabitCalendar => Boolean(cal && isInPeriod(cal, date)))
+  const unit = firstPicked?.unit
+
   /** 고를 수 없는 이유 (고를 수 있으면 undefined) */
   const blockedReason = (cal: HabitCalendar) => {
-    if (cal.unit !== unit) return `${UNIT_META[cal.unit].label} 단위`
     if (!isInPeriod(cal, date)) return '기간 밖'
+    if (unit && cal.unit !== unit) return UNIT_META[cal.unit].label
     return undefined
   }
   const selectable = (cal: HabitCalendar) => blockedReason(cal) === undefined
-  // 단위·날짜가 바뀌어 고를 수 없게 된 캘린더는 선택에서 뺍니다.
+  // 날짜가 바뀌어 고를 수 없게 된 캘린더는 선택에서 뺍니다.
   const validSelected = selected.filter((id) => {
     const cal = calendars.find((c) => c.id === id)
     return cal && selectable(cal)
   })
 
-  const amount =
-    unit === 'check' ? 1 : unit === 'hours' ? (Number(hours) || 0) + (Number(minutes) || 0) / 60 : Number(value) || 0
-  const canSave = amount > 0 && validSelected.length > 0 && Boolean(date)
+  const amount = !unit
+    ? 0
+    : unit === 'check'
+      ? 1
+      : unit === 'hours'
+        ? (Number(hours) || 0) + (Number(minutes) || 0) / 60
+        : Number(value) || 0
+  const canSave = Boolean(unit) && amount > 0 && validSelected.length > 0 && Boolean(date)
   const hasBlocked = calendars.some((c) => !selectable(c))
 
   const toggle = (id: string) => setSelected((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]))
@@ -81,7 +92,7 @@ export function RecordDialog({ calendars, initial, isEdit, onSave, onClose }: Re
           setSaving(true)
           setError(null)
           try {
-            await onSave({ date, amount, unit, calendarIds: validSelected })
+            if (unit) await onSave({ date, amount, unit, calendarIds: validSelected })
           } catch (err) {
             setError(err instanceof Error ? err.message : '저장하지 못했어요.')
             setSaving(false)
@@ -104,74 +115,6 @@ export function RecordDialog({ calendars, initial, isEdit, onSave, onClose }: Re
             onChange={(e) => setDate(e.target.value)}
             className="rounded-lg border border-line bg-white/80 px-3 py-2 text-base text-ink-900 focus:border-ink-400 focus:outline-none"
           />
-        </div>
-
-        <div className="mt-5">
-          <p className={labelClass}>활동량</p>
-          {unit === 'check' ? (
-            <p className="py-2 text-[15px] text-ink-700">완료로 기록돼요</p>
-          ) : unit === 'hours' ? (
-            <div className="flex items-center gap-2 text-ink-700">
-              <input
-                aria-label="시간"
-                type="number"
-                min={0}
-                inputMode="numeric"
-                value={hours}
-                onChange={(e) => setHours(e.target.value)}
-                className={inputClass}
-                autoFocus
-              />
-              시간
-              <input
-                aria-label="분"
-                type="number"
-                min={0}
-                max={59}
-                step={5}
-                inputMode="numeric"
-                value={minutes}
-                onChange={(e) => setMinutes(e.target.value)}
-                className={`${inputClass} ml-2`}
-              />
-              분
-            </div>
-          ) : (
-            <div className="flex items-center gap-2 text-ink-700">
-              <input
-                aria-label={`활동량 (${UNIT_META[unit].suffix})`}
-                type="number"
-                min={0}
-                step="any"
-                inputMode="decimal"
-                value={value}
-                onChange={(e) => setValue(e.target.value)}
-                className={inputClass}
-                autoFocus
-              />
-              {UNIT_META[unit].suffix}
-            </div>
-          )}
-        </div>
-
-        <div className="mt-5">
-          <p className={labelClass}>단위</p>
-          <div className="flex flex-wrap gap-1.5" role="radiogroup" aria-label="단위">
-            {UNIT_OPTIONS.map((u) => (
-              <button
-                key={u}
-                type="button"
-                role="radio"
-                aria-checked={unit === u}
-                onClick={() => setUnit(u)}
-                className={`rounded-full border px-3.5 py-1.5 text-sm ${
-                  unit === u ? 'border-ink-900 bg-ink-900 text-paper' : 'border-line bg-paper text-ink-700 hover:bg-white'
-                }`}
-              >
-                {UNIT_META[u].label}
-              </button>
-            ))}
-          </div>
         </div>
 
         <fieldset className="mt-5">
@@ -214,9 +157,57 @@ export function RecordDialog({ calendars, initial, isEdit, onSave, onClose }: Re
             })}
           </div>
           {hasBlocked && (
-            <p className="mt-2 px-3 text-xs text-ink-500">단위가 다르거나 기간이 지난 캘린더에는 함께 반영할 수 없어요.</p>
+            <p className="mt-2 px-3 text-xs text-ink-500">기록 방식이 다르거나 기간이 지난 캘린더에는 함께 반영할 수 없어요.</p>
           )}
         </fieldset>
+
+        <div className="mt-5">
+          <p className={labelClass}>활동량</p>
+          {!unit ? (
+            <p className="py-2 text-[15px] text-ink-400">캘린더를 고르면 입력 칸이 나와요</p>
+          ) : unit === 'check' ? (
+            <p className="py-2 text-[15px] text-ink-700">완료로 기록돼요</p>
+          ) : unit === 'hours' ? (
+            <div className="flex items-center gap-2 text-ink-700">
+              <input
+                aria-label="시간"
+                type="number"
+                min={0}
+                inputMode="numeric"
+                value={hours}
+                onChange={(e) => setHours(e.target.value)}
+                className={inputClass}
+              />
+              시간
+              <input
+                aria-label="분"
+                type="number"
+                min={0}
+                max={59}
+                step={5}
+                inputMode="numeric"
+                value={minutes}
+                onChange={(e) => setMinutes(e.target.value)}
+                className={`${inputClass} ml-2`}
+              />
+              분
+            </div>
+          ) : (
+            <div className="flex items-center gap-2 text-ink-700">
+              <input
+                aria-label={`활동량 (${UNIT_META[unit].suffix})`}
+                type="number"
+                min={0}
+                step="any"
+                inputMode="decimal"
+                value={value}
+                onChange={(e) => setValue(e.target.value)}
+                className={inputClass}
+              />
+              {UNIT_META[unit].suffix}
+            </div>
+          )}
+        </div>
 
         {error && (
           <p role="alert" className="mt-5 rounded-lg bg-peach-100 px-3 py-2 text-sm text-peach-700">

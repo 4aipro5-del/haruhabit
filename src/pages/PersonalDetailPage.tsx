@@ -13,7 +13,7 @@ import {
   totalsByDate,
   weeklyProgress,
 } from '../lib/stats'
-import { UNIT_META, formatAmount, formatFrequency, formatNumber, formatPercent } from '../lib/units'
+import { UNIT_META, formatAmount, formatFrequency, formatNumber, formatPercent, formatRecordAmount } from '../lib/units'
 import { useMonthNavigator } from '../hooks/useMonthNavigator'
 import { DetailHeader } from '../components/layout/DetailHeader'
 import { DayRecordPanel } from '../components/calendar/DayRecordPanel'
@@ -39,6 +39,10 @@ export function PersonalDetailPage({ calendar, records, today }: Props) {
   const streak = currentStreak(dates, today)
   const monthSum = monthTotal(records, nav.year, nav.month)
   const monthDays = monthActiveDays(records, nav.year, nav.month)
+  const goalLines = [
+    `${formatFrequency(calendar.frequency)} 실천하기`,
+    ...(calendar.unit !== 'check' && calendar.target ? [`한 번에 ${formatRecordAmount(calendar.target, calendar.unit)}`] : []),
+  ]
 
   return (
     <div>
@@ -52,8 +56,9 @@ export function PersonalDetailPage({ calendar, records, today }: Props) {
           <CardTitle size="lg" icon={<Target size={20} />}>
             목표
           </CardTitle>
+          {/* 세부 목표 문장 대신 캘린더 설정으로 목표를 보여 줘요 */}
           <ul className="flex flex-col gap-2.5">
-            {calendar.goals.map((goal) => (
+            {goalLines.map((goal) => (
               <li key={goal} className="flex items-start gap-2.5 text-base text-ink-700">
                 <CircleCheck size={20} className={`mt-0.5 shrink-0 ${c.text}`} />
                 {goal}
@@ -61,8 +66,7 @@ export function PersonalDetailPage({ calendar, records, today }: Props) {
             ))}
           </ul>
           <div className="mt-5 flex flex-wrap gap-2">
-            <Chip large color={calendar.color}>기록 단위 · {UNIT_META[calendar.unit].label}</Chip>
-            <Chip large color={calendar.color}>빈도 · {formatFrequency(calendar.frequency)}</Chip>
+            <Chip large color={calendar.color}>기록 · {UNIT_META[calendar.unit].label}</Chip>
           </div>
         </Card>
 

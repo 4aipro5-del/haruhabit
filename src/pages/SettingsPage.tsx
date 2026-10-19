@@ -6,7 +6,7 @@ import { MigrationSection } from '../components/account/MigrationSection'
 import { downloadBackup } from '../data/storage'
 import { COLOR_STYLES } from '../lib/colors'
 import { hrefFor } from '../lib/router'
-import { formatFrequency, UNIT_META } from '../lib/units'
+import { goalSummary } from '../lib/units'
 import { isEnded } from '../lib/activity'
 import { formatMonthDay, todayKey } from '../lib/date'
 import type { HabitCalendar } from '../types'
@@ -126,7 +126,7 @@ function CalendarRow({ calendar: cal, ended = false }: { calendar: HabitCalendar
   const detail = ended
     ? `${cal.endDate ? formatMonthDay(cal.endDate) : ''} 종료`
     : personal
-      ? `${formatFrequency(cal.frequency)} · ${UNIT_META[cal.unit].label}`
+      ? goalSummary(cal)
       : null
   const content = (
     <>
