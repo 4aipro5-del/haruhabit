@@ -6,6 +6,8 @@ import type { HabitCalendar } from '../../types'
 import type { Route } from '../../lib/router'
 import { hrefFor } from '../../lib/router'
 import { COLOR_STYLES } from '../../lib/colors'
+import { isEnded } from '../../lib/activity'
+import { todayKey } from '../../lib/date'
 
 /** 'all' 또는 캘린더 id */
 export type CalendarFilter = string
@@ -26,8 +28,11 @@ export function SidebarLogo() {
   )
 }
 
-export function SidebarContent({ route, calendars, filter, onFilterChange }: SidebarProps) {
+export function SidebarContent({ route, calendars: allCalendars, filter, onFilterChange }: SidebarProps) {
   const onCalendarPage = route.name === 'home'
+  // 목표 기간이 끝난 캘린더는 첫 화면 사이드바에서 숨김 (설정 › 캘린더 관리의 '지난 캘린더'에서 볼 수 있음)
+  const today = todayKey()
+  const calendars = allCalendars.filter((c) => !isEnded(c, today))
 
   return (
     <div className="flex flex-col gap-1">

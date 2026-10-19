@@ -4,7 +4,7 @@ import type { ActivityRecord, DateKey } from '../types'
 import type { CalendarFilter } from '../components/layout/Sidebar'
 import { useData } from '../data/DataProvider'
 import { formatMonthLabel, parseKey, shiftMonth } from '../lib/date'
-import { primaryCalendar, recordsForFilter } from '../lib/activity'
+import { isEnded, primaryCalendar, recordsForFilter } from '../lib/activity'
 import { goalStatus } from '../lib/goals'
 import { Paper } from '../components/layout/Paper'
 import { DiaryCalendar } from '../components/diary/DiaryCalendar'
@@ -42,7 +42,9 @@ export function CalendarPage({ today, filter }: CalendarPageProps) {
   }
 
   // 선택한 날짜의 목표 현황 (사이드바에서 캘린더를 고르면 그 캘린더만)
-  const goals = (filterCalendar ? [filterCalendar] : calendars).map((cal) => goalStatus(cal, diary.recordsOf(cal.id), selected))
+  // 기간이 끝난 캘린더는 목표 목록과 기록 팝업에서 빼고, 기록·점·통계는 그대로 둠
+  const activeCalendars = calendars.filter((c) => !isEnded(c, today))
+  const goals = (filterCalendar ? [filterCalendar] : activeCalendars).map((cal) => goalStatus(cal, diary.recordsOf(cal.id), selected))
 
   const dayItems = visibleRecords
     .filter((r) => r.date === selected)
@@ -115,7 +117,11 @@ export function CalendarPage({ today, filter }: CalendarPageProps) {
 
       {dialog && (
         <RecordDialog
-          calendars={calendars}
+          calendars={
+            dialog.mode === 'edit'
+              ? calendars.filter((c) => !isEnded(c, today) || dialog.record.calendarIds.includes(c.id))
+              : activeCalendars
+          }
           initial={
             dialog.mode === 'edit'
               ? dialog.record

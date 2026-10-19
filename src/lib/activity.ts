@@ -28,8 +28,14 @@ export function recordsForFilter(records: ActivityRecord[], filter: string): Act
   return filter === 'all' ? records : records.filter((r) => r.calendarIds.includes(filter))
 }
 
-/** 이 날짜에 이 캘린더로 기록할 수 있는지 (챌린지 기간 밖이면 불가) */
+/** 이 날짜에 이 캘린더로 기록할 수 있는지 (기간 밖이면 불가) */
 export function isInPeriod(calendar: HabitCalendar, date: DateKey): boolean {
-  if (calendar.type === 'personal') return true
+  // 개인 캘린더는 시작일 전 기록도 허용하고, 종료일을 정했다면 그 뒤로만 막음
+  if (calendar.type === 'personal') return !calendar.endDate || date <= calendar.endDate
   return date >= calendar.startDate && (!calendar.endDate || date <= calendar.endDate)
+}
+
+/** 목표 기간이 끝난 캘린더인지 (종료일 다음 날부터). 기록과 통계는 그대로 남아요. */
+export function isEnded(calendar: HabitCalendar, today: DateKey): boolean {
+  return Boolean(calendar.endDate && calendar.endDate < today)
 }

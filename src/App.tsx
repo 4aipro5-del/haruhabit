@@ -5,6 +5,7 @@ import { AuthProvider, useAuth } from './data/AuthProvider'
 import { DataProvider, useData } from './data/DataProvider'
 import { loadData } from './data/storage'
 import { buildPlan, isPlanEmpty, migratedFingerprint } from './data/migration'
+import { isEnded } from './lib/activity'
 import { AppShell } from './components/layout/AppShell'
 import { Paper } from './components/layout/Paper'
 import type { CalendarFilter } from './components/layout/Sidebar'
@@ -30,8 +31,9 @@ function Screens() {
   const { notice, user } = useAuth()
   const { calendars, getCalendar, mode, loading, loadError, reload } = useData()
   const [selectedFilter, setFilter] = useState<CalendarFilter>('all')
-  // 선택했던 캘린더가 삭제되면 전체 보기로 돌아갑니다.
-  const filter = selectedFilter === 'all' || calendars.some((c) => c.id === selectedFilter) ? selectedFilter : 'all'
+  // 선택했던 캘린더가 삭제됐거나 기간이 끝나면 전체 보기로 돌아갑니다.
+  const filter =
+    selectedFilter === 'all' || calendars.some((c) => c.id === selectedFilter && !isEnded(c, today)) ? selectedFilter : 'all'
 
   const goHome = () => (window.location.hash = hrefFor({ name: 'home' }))
 
