@@ -10,6 +10,7 @@ const files = [
   '20261018000000_stage3_personal_cloud.sql',
   '20261019000000_fix_conflict_error_code.sql',
   '20261020000000_stage4_challenges.sql',
+  '20261021000000_invite_codes.sql',
 ]
 
 const db = new PGlite()
@@ -248,6 +249,42 @@ ok('탈퇴 후 B 기록 수정 (개인 캘린더로 다시 연결) 가능', (awa
 const solo = (await as('a', `select (create_challenge('shared','혼자','book','sky','hours',5,$1,$2,'에이')).id`, [today, end])).rows[0].id
 await as('a', `select delete_calendar($1)`, [solo])
 ok('방장 혼자면 삭제 가능', (await as('a', `select * from calendars where id=$1`, [solo])).rows.length === 0)
+
+// ---- 초대 코드 (6자리, 틀린 입력 1시간에 5번) ----
+const codeCal = (await as('a', `select (create_challenge('shared','코드 테스트','book','sky','hours',5,$1,$2,'에이')).id`, [today, end])).rows[0].id
+const ci = (await as('a', `select * from create_invite($1)`, [codeCal])).rows[0]
+ok('코드: 링크와 함께 6자리 코드 생성', /^[A-HJKMNP-Z2-9]{6}$/.test(ci.code ?? ''), ci.code)
+ok('코드: 헷갈리는 글자(0 O 1 I L) 없음', !/[01OIL]/.test(ci.code))
+ok('코드: 방장은 지금 코드를 다시 볼 수 있음', (await as('a', `select * from get_active_invite($1)`, [codeCal])).rows[0].code === ci.code)
+const E = await mkUser('e')
+const messy = ' ' + ci.code.slice(0, 3).toLowerCase() + '-' + ci.code.slice(3) + ' '
+const cr1 = (await as('e', `select resolve_invite_code($1) as r`, [messy])).rows[0].r
+ok('코드: 소문자·하이픈·띄어쓰기 섞여도 인식 → 토큰', cr1.status === 'ok' && cr1.token === ci.token)
+await fails('코드: 로그인 전에는 사용 불가', null, `select resolve_invite_code($1)`, [ci.code])
+await fails('코드: 시도 기록 표 직접 조회 불가', 'e', `select * from invite_code_attempts`)
+await fails('코드: 코드 생성 함수 직접 호출 불가', 'e', `select new_invite_code()`)
+const F = await mkUser('f')
+const wrong = ci.code === 'AAAAAA' ? 'BBBBBB' : 'AAAAAA'
+const tries = []
+for (let i = 0; i < 5; i++) tries.push((await as('f', `select resolve_invite_code($1) as r`, [wrong])).rows[0].r)
+ok('코드: 틀리면 남은 횟수 4→0', tries.map((t) => t.remaining).join(',') === '4,3,2,1,0', JSON.stringify(tries.map((t) => t.status + t.remaining)))
+const locked = (await as('f', `select resolve_invite_code($1) as r`, [ci.code])).rows[0].r
+ok('코드: 5번 틀리면 맞는 코드도 잠김 (약 60분)', locked.status === 'locked' && locked.retry_minutes >= 59 && locked.retry_minutes <= 60, JSON.stringify(locked))
+ok('코드: 다른 계정은 영향 없음', (await as('e', `select resolve_invite_code($1) as r`, [ci.code])).rows[0].r.status === 'ok')
+ok('코드: 맞는 코드는 횟수에 안 셈', (await as('e', `select resolve_invite_code($1) as r`, [ci.code])).rows[0].r.status === 'ok')
+await db.query('reset role')
+await db.query(`update invite_code_attempts set attempted_at = now() - interval '61 minutes' where user_id=$1`, [users.f])
+ok('코드: 1시간 지나면 다시 시도 가능', (await as('f', `select resolve_invite_code($1) as r`, [ci.code])).rows[0].r.status === 'ok')
+// 코드로 받은 토큰도 링크와 똑같이 검사됨
+const viaCode = (await as('e', `select accept_invite($1,'이') as r`, [cr1.token])).rows[0].r
+ok('코드: 코드로 받은 토큰으로 참여', viaCode.status === 'joined')
+const ci2 = (await as('a', `select * from create_invite($1)`, [codeCal])).rows[0]
+const oldCode = (await as('f', `select resolve_invite_code($1) as r`, [ci.code])).rows[0].r
+ok('코드: 새 링크를 만들면 예전 코드는 취소 상태', oldCode.status === 'ok' && (await as('f', `select preview_invite($1) as p`, [oldCode.token])).rows[0].p.status === 'revoked')
+ok('코드: 새 코드는 예전 코드와 다름', ci2.code !== ci.code)
+await as('a', `select revoke_invite($1)`, [codeCal])
+const rc = (await as('f', `select resolve_invite_code($1) as r`, [ci2.code])).rows[0].r
+await fails('코드: 취소된 링크의 코드로 참여 → 차단', 'f', `select accept_invite($1,'에프')`, [rc.token], '취소')
 
 // 재귀·성능 확인: 여러 표 조회가 오류 없이 끝나는지
 try {

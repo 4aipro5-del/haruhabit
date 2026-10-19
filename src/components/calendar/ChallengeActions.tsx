@@ -87,7 +87,7 @@ function InviteDialog({ calendar, onClose }: { calendar: HabitCalendar; onClose:
   const [invite, setInvite] = useState<ActiveInvite | null | undefined>(undefined)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [copied, setCopied] = useState(false)
+  const [copied, setCopied] = useState<'link' | 'code' | null>(null)
   const memberCount = calendar.members?.length ?? 1
 
   useEffect(() => {
@@ -105,7 +105,7 @@ function InviteDialog({ calendar, onClose }: { calendar: HabitCalendar; onClose:
   const act = async (fn: () => Promise<void>) => {
     setBusy(true)
     setError(null)
-    setCopied(false)
+    setCopied(null)
     try {
       await fn()
     } catch (e) {
@@ -116,17 +116,17 @@ function InviteDialog({ calendar, onClose }: { calendar: HabitCalendar; onClose:
   }
 
   const url = invite ? inviteUrl(invite.token) : ''
-  const copy = () =>
+  const copy = (what: 'link' | 'code') =>
     act(async () => {
       try {
-        await navigator.clipboard.writeText(url)
+        await navigator.clipboard.writeText(what === 'link' ? url : (invite?.code ?? ''))
       } catch {
-        // 클립보드 권한이 없는 브라우저: 주소 칸을 선택해 직접 복사할 수 있게 함
-        const input = document.getElementById('invite-url') as HTMLInputElement | null
+        // 클립보드 권한이 없는 브라우저: 칸을 선택해 직접 복사할 수 있게 함
+        const input = document.getElementById(what === 'link' ? 'invite-url' : 'invite-code') as HTMLInputElement | null
         input?.select()
-        throw new Error('자동 복사가 안 돼요. 주소를 길게 눌러 직접 복사해 주세요.')
+        throw new Error('자동 복사가 안 돼요. 길게 눌러 직접 복사해 주세요.')
       }
-      setCopied(true)
+      setCopied(what)
     })
 
   return (
@@ -151,9 +151,9 @@ function InviteDialog({ calendar, onClose }: { calendar: HabitCalendar; onClose:
             className="w-full rounded-lg border border-line bg-white/80 px-3 py-2 text-sm text-ink-900"
           />
           <div className="mt-3 flex flex-wrap gap-2">
-            <button type="button" onClick={() => void copy()} disabled={busy} className="inline-flex items-center gap-1.5 rounded-lg bg-ink-900 px-4 py-2 text-[15px] text-paper disabled:opacity-60">
+            <button type="button" onClick={() => void copy('link')} disabled={busy} className="inline-flex items-center gap-1.5 rounded-lg bg-ink-900 px-4 py-2 text-[15px] text-paper disabled:opacity-60">
               <Copy size={16} />
-              {copied ? '복사했어요' : '링크 복사'}
+              {copied === 'link' ? '복사했어요' : '링크 복사'}
             </button>
             <button
               type="button"
@@ -177,7 +177,36 @@ function InviteDialog({ calendar, onClose }: { calendar: HabitCalendar; onClose:
               링크 취소
             </button>
           </div>
-          <p className="mt-2 text-xs text-ink-500">새 링크를 만들거나 취소하면 예전 링크로는 더 참여할 수 없어요.</p>
+
+          {/* 링크가 잘리거나 안 열릴 때: 친구가 로그인 후 설정 › 캘린더 관리에서 코드를 입력 */}
+          <div className="mt-5">
+            <label htmlFor="invite-code" className="mb-2 block text-sm text-ink-500">
+              초대 코드 · 링크가 안 열리면 설정 › 캘린더 관리 › 초대 코드로 참여
+            </label>
+            {invite.code ? (
+              <div className="flex flex-wrap items-center gap-2">
+                <input
+                  id="invite-code"
+                  readOnly
+                  value={invite.code}
+                  onFocus={(e) => e.target.select()}
+                  className="w-32 rounded-lg border border-line bg-white/80 px-3 py-2 text-center font-mono text-lg tracking-[0.2em] text-ink-900"
+                />
+                <button
+                  type="button"
+                  onClick={() => void copy('code')}
+                  disabled={busy}
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-line px-4 py-2 text-[15px] text-ink-700 hover:bg-line/50 disabled:opacity-60"
+                >
+                  <Copy size={16} />
+                  {copied === 'code' ? '복사했어요' : '코드 복사'}
+                </button>
+              </div>
+            ) : (
+              <p className="text-sm text-ink-500">코드 기능 전에 만든 링크라 코드가 없어요. '새 링크 만들기'를 누르면 코드도 생겨요.</p>
+            )}
+          </div>
+          <p className="mt-3 text-xs text-ink-500">새 링크를 만들거나 취소하면 예전 링크와 코드로는 더 참여할 수 없어요.</p>
         </div>
       )}
 

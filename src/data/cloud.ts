@@ -83,8 +83,19 @@ export interface InvitePreview {
 
 export interface ActiveInvite {
   token: string
+  /** 6자리 초대 코드 (코드 기능 전에 만든 링크면 없음) */
+  code: string | null
   expiresAt: string
 }
+
+type InviteRow = { token: string; code?: string | null; expires_at: string }
+const toInvite = (row: InviteRow): ActiveInvite => ({ token: row.token, code: row.code ?? null, expiresAt: row.expires_at })
+
+/** 초대 코드 → 결과 (틀린 입력은 계정당 1시간에 5번까지) */
+export type CodeResult =
+  | { status: 'ok'; token: string }
+  | { status: 'wrong'; remaining: number }
+  | { status: 'locked'; retry_minutes: number }
 
 function check<T>(result: { data: T; error: unknown }): T {
   if (result.error) throw result.error
@@ -283,20 +294,24 @@ export async function createChallenge(client: SupabaseClient, input: ChallengeIn
 
 /** 지금 쓸 수 있는 초대 링크 (없으면 null) — 방장만 */
 export async function getActiveInvite(client: SupabaseClient, calendarId: string): Promise<ActiveInvite | null> {
-  const rows = check(await client.rpc('get_active_invite', { p_calendar_id: calendarId })) as { token: string; expires_at: string }[]
-  const row = rows?.[0]
-  return row ? { token: row.token, expiresAt: row.expires_at } : null
+  const rows = check(await client.rpc('get_active_invite', { p_calendar_id: calendarId })) as InviteRow[]
+  return rows?.[0] ? toInvite(rows[0]) : null
 }
 
 /** 새 초대 링크 (예전 링크는 자동 취소, 7일 유효) — 방장만 */
 export async function createInvite(client: SupabaseClient, calendarId: string): Promise<ActiveInvite> {
-  const rows = check(await client.rpc('create_invite', { p_calendar_id: calendarId })) as { token: string; expires_at: string }[]
+  const rows = check(await client.rpc('create_invite', { p_calendar_id: calendarId })) as InviteRow[]
   if (!rows?.[0]) throw new Error('초대 링크를 만들지 못했어요.')
-  return { token: rows[0].token, expiresAt: rows[0].expires_at }
+  return toInvite(rows[0])
 }
 
 export async function revokeInvite(client: SupabaseClient, calendarId: string) {
   check(await client.rpc('revoke_invite', { p_calendar_id: calendarId }))
+}
+
+/** 초대 코드를 초대 링크 토큰으로 (로그인한 사람만) */
+export async function resolveInviteCode(client: SupabaseClient, code: string): Promise<CodeResult> {
+  return check(await client.rpc('resolve_invite_code', { p_code: code })) as CodeResult
 }
 
 /** 초대 미리보기 (로그인 전에도 됨) */

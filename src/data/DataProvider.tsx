@@ -65,6 +65,8 @@ interface DataContextValue {
   getActiveInvite: (id: string) => Promise<cloud.ActiveInvite | null>
   createInvite: (id: string) => Promise<cloud.ActiveInvite>
   revokeInvite: (id: string) => Promise<void>
+  /** 초대 코드 확인 → 맞으면 초대 화면용 토큰 */
+  resolveInviteCode: (code: string) => Promise<cloud.CodeResult>
 }
 
 const LOGIN_REQUIRED = '로그인하면 친구와 함께하는 챌린지를 쓸 수 있어요.'
@@ -301,6 +303,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
         getActiveInvite: (id) => cloud.getActiveInvite(client, id),
         createInvite: (id) => track(() => cloud.createInvite(client, id)),
         revokeInvite: (id) => track(() => cloud.revokeInvite(client, id)),
+        resolveInviteCode: (code) => cloud.resolveInviteCode(client, code),
       }
     }
 
@@ -388,6 +391,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
         throw new Error(LOGIN_REQUIRED)
       },
       revokeInvite: async () => {
+        throw new Error(LOGIN_REQUIRED)
+      },
+      resolveInviteCode: async () => {
         throw new Error(LOGIN_REQUIRED)
       },
     }

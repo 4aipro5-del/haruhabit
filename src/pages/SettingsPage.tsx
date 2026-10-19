@@ -48,6 +48,7 @@ export function SettingsPage() {
             <CalendarRow key={cal.id} calendar={cal} />
           ))}
         </ul>
+        {mode === 'cloud' && <JoinByCode />}
 
         {/* 목표 기간이 끝난 캘린더: 첫 화면 사이드바에서는 숨기고, 여기서만 접어서 보관 */}
         {endedCalendars.length > 0 && (
@@ -118,6 +119,83 @@ export function SettingsPage() {
           </li>
         ))}
       </ul>
+    </div>
+  )
+}
+
+/** 초대 링크가 잘리거나 안 열릴 때: 방장에게 받은 6자리 코드로 참여 (틀린 입력은 1시간에 5번까지) */
+function JoinByCode() {
+  const { resolveInviteCode } = useData()
+  const [code, setCode] = useState('')
+  const [working, setWorking] = useState(false)
+  const [message, setMessage] = useState<string | null>(null)
+  const cleaned = code.toUpperCase().replace(/[^A-Z0-9]/g, '')
+
+  const submit = async () => {
+    if (working || cleaned.length !== 6) return
+    setWorking(true)
+    setMessage(null)
+    try {
+      const result = await resolveInviteCode(cleaned)
+      if (result.status === 'ok') {
+        // 코드가 맞으면 링크로 들어온 것과 같은 초대 화면으로 (만료·취소·인원은 거기서 확인)
+        window.location.hash = hrefFor({ name: 'join', token: result.token })
+        return
+      }
+      setMessage(
+        result.status === 'locked'
+          ? `코드를 여러 번 틀려서 잠시 막혔어요. ${result.retry_minutes}분 뒤에 다시 시도해 주세요.`
+          : result.remaining > 0
+            ? `코드가 맞지 않아요. 앞으로 ${result.remaining}번 더 시도할 수 있어요.`
+            : '코드가 맞지 않아요. 1시간 뒤에 다시 시도할 수 있어요.',
+      )
+    } catch (err) {
+      setMessage(err instanceof Error ? err.message : '코드를 확인하지 못했어요.')
+    }
+    setWorking(false)
+  }
+
+  return (
+    <div className="border-b border-line px-2 py-4">
+      <form
+        className="flex flex-wrap items-center gap-3 text-lg sm:text-xl"
+        onSubmit={(e) => {
+          e.preventDefault()
+          void submit()
+        }}
+      >
+        <label htmlFor="invite-code-input" className="text-ink-900">
+          초대 코드로 참여
+        </label>
+        <input
+          id="invite-code-input"
+          type="text"
+          inputMode="text"
+          autoCapitalize="characters"
+          autoComplete="off"
+          maxLength={9}
+          value={code}
+          onChange={(e) => {
+            setCode(e.target.value)
+            setMessage(null)
+          }}
+          placeholder="6자리 코드"
+          className="w-36 rounded-lg border border-line bg-white/80 px-3 py-2 text-center font-mono text-base uppercase tracking-[0.15em] text-ink-900 placeholder:font-sans placeholder:tracking-normal placeholder:text-ink-300"
+        />
+        <button
+          type="submit"
+          disabled={working || cleaned.length !== 6}
+          className="rounded-lg border border-line px-4 py-2 text-base text-ink-700 hover:bg-line/50 disabled:opacity-50"
+        >
+          {working ? '확인 중…' : '확인'}
+        </button>
+      </form>
+      <p className="mt-2 text-base text-ink-500">초대 링크가 열리지 않으면 방장에게 받은 코드를 넣어 주세요.</p>
+      {message && (
+        <p role="alert" className="mt-2 text-base text-sun">
+          {message}
+        </p>
+      )}
     </div>
   )
 }
