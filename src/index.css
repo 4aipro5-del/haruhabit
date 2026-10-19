@@ -93,7 +93,7 @@
   --color-rose-200: #f6c9d6;
   --color-rose-400: #eb98ae;
   --color-rose-500: #df8aa2;
-  --color-rose-dot: #f9a8d4; /* Tailwind pink-300 · 캘린더 대표색 */
+  --color-rose-dot: #fbcfe8; /* Tailwind pink-200 · 빨강과 구분되게 한 단계 연하게 */
   --color-rose-700: #a84863;
 
   /* sand: 노랑·주황과 겹치지 않게 Tailwind indigo 계열로 (키 이름은 저장된 데이터와 맞추려고 그대로) */
