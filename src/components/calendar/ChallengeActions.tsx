@@ -5,6 +5,9 @@ import { useData } from '../../data/DataProvider'
 import type { ActiveInvite } from '../../data/cloud'
 import { inviteUrl } from '../../lib/invite'
 import { hrefFor } from '../../lib/router'
+import { isEnded, isInPeriod } from '../../lib/activity'
+import { todayKey } from '../../lib/date'
+import { UNIT_META, formatAmount } from '../../lib/units'
 import { ComingSoonButton } from '../ui/Buttons'
 
 const button =
@@ -238,18 +241,60 @@ function InviteDialog({ calendar, onClose }: { calendar: HabitCalendar; onClose:
   )
 }
 
-/** 챌린지 나가기: 활동 원본은 그대로 두고 이 챌린지 연결만 끊음 */
+const NEW_CALENDAR = '__new'
+
+/**
+ * 챌린지 나가기: 활동 원본은 그대로 두고 이 챌린지 연결만 끊음
+ * 이 챌린지에만 연결된 기록이 있으면 '내 캘린더로 옮기기'를 먼저 물어봄
+ * - 기록 방식이 같은 내 개인 캘린더만 고를 수 있고, 없으면 같은 이름으로 새로 만들어 옮길 수 있음
+ * - 먼저 고른 캘린더에 연결한 뒤 나가므로, 중간에 실패해도 기록이 사라지지 않음
+ */
 function LeaveDialog({ calendar, onClose }: { calendar: HabitCalendar; onClose: () => void }) {
-  const { leaveChallenge, myRecords } = useData()
+  const { leaveChallenge, myRecords, calendars, updateRecord, createCalendar } = useData()
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const mine = myRecords.filter((r) => r.calendarIds.includes(calendar.id))
-  const onlyHere = mine.filter((r) => r.calendarIds.length === 1).length
+  const onlyHere = mine.filter((r) => r.calendarIds.length === 1)
+  const today = todayKey()
+  // 옮길 수 있는 곳: 기록 방식이 같고, 끝나지 않았고, 옮길 기록 날짜를 모두 받을 수 있는 내 개인 캘린더
+  const targets = calendars.filter(
+    (c) =>
+      c.type === 'personal' &&
+      c.unit === calendar.unit &&
+      !isEnded(c, today) &&
+      onlyHere.every((r) => isInPeriod(c, r.date)),
+  )
+  const [move, setMove] = useState(true)
+  const [target, setTarget] = useState<string>(targets[0]?.id ?? NEW_CALENDAR)
+  const total = onlyHere.reduce((sum, r) => sum + r.amount, 0)
 
   const leave = async () => {
     setBusy(true)
     setError(null)
     try {
+      if (move && onlyHere.length > 0) {
+        let targetId = target
+        if (targetId === NEW_CALENDAR) {
+          const firstDate = onlyHere.map((r) => r.date).sort()[0]
+          const created = await createCalendar({
+            name: calendar.name,
+            description: '',
+            icon: calendar.icon,
+            color: calendar.color,
+            unit: calendar.unit,
+            goals: [],
+            frequency: { kind: 'weekly', times: 3 },
+            target: undefined,
+            startDate: firstDate ?? today,
+            endDate: undefined,
+          })
+          targetId = created.id
+        }
+        // 챌린지 연결은 그대로 두고 내 캘린더 연결을 더함 → 나가면 챌린지 연결만 빠짐
+        for (const r of onlyHere) {
+          await updateRecord(r.id, { date: r.date, amount: r.amount, unit: r.unit, calendarIds: [calendar.id, targetId] })
+        }
+      }
       await leaveChallenge(calendar.id)
       window.location.replace(hrefFor({ name: 'home' }))
     } catch (e) {
@@ -263,9 +308,45 @@ function LeaveDialog({ calendar, onClose }: { calendar: HabitCalendar; onClose: 
       <ul className="mt-3 flex list-disc flex-col gap-1.5 pl-5 text-sm leading-relaxed text-ink-700">
         <li>내 활동 기록 {mine.length}개는 지워지지 않고, 이 챌린지와의 연결만 끊어져요.</li>
         <li>개인 캘린더에도 연결된 기록은 그대로 남아요.</li>
-        {onlyHere > 0 && <li>이 챌린지에만 있던 {onlyHere}개는 첫 화면 '전체'에서 '연결 없음'으로 보이고, 다른 캘린더에 다시 연결할 수 있어요.</li>}
-        <li>챌린지 통계에서는 내 기록이 빠져요. 다시 참여하려면 새 초대 링크가 필요해요.</li>
+        <li>챌린지 통계에서는 내 기록이 빠져요. 다시 참여하려면 새 초대 링크나 코드가 필요해요.</li>
       </ul>
+
+      {onlyHere.length > 0 && (
+        <fieldset className="mt-5 rounded-xl border border-line bg-white/60 p-4">
+          <legend className="px-1 text-sm text-ink-900">
+            이 챌린지에만 있는 기록 {onlyHere.length}개(총 {formatAmount(total, calendar.unit)})를 어떻게 할까요?
+          </legend>
+          <label className="mt-1 flex items-center gap-2 text-sm text-ink-900">
+            <input type="radio" name="leave-move" checked={move} onChange={() => setMove(true)} className="accent-ink-900" />
+            내 캘린더로 옮기기
+          </label>
+          {move && (
+            <select
+              value={target}
+              onChange={(e) => setTarget(e.target.value)}
+              aria-label="옮길 캘린더"
+              className="ml-6 mt-2 w-[calc(100%-1.5rem)] rounded-lg border border-line bg-white px-3 py-2 text-sm text-ink-900"
+            >
+              {targets.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
+              ))}
+              <option value={NEW_CALENDAR}>새 개인 캘린더 '{calendar.name}' 만들어 옮기기</option>
+            </select>
+          )}
+          {move && targets.length === 0 && (
+            <p className="ml-6 mt-1.5 text-xs text-ink-500">
+              기록 방식({UNIT_META[calendar.unit].label})이 같은 내 캘린더가 없어서 새로 만들어요.
+            </p>
+          )}
+          <label className="mt-3 flex items-center gap-2 text-sm text-ink-900">
+            <input type="radio" name="leave-move" checked={!move} onChange={() => setMove(false)} className="accent-ink-900" />
+            옮기지 않기 <span className="text-ink-500">(첫 화면 '전체'에서 '연결 없음'으로 남아요)</span>
+          </label>
+        </fieldset>
+      )}
+
       {error && (
         <p role="alert" className="mt-4 rounded-lg bg-peach-100 px-3 py-2 text-sm text-peach-700">
           {error}
@@ -276,7 +357,7 @@ function LeaveDialog({ calendar, onClose }: { calendar: HabitCalendar; onClose: 
           취소
         </button>
         <button type="button" onClick={() => void leave()} disabled={busy} className="rounded-lg bg-sun px-5 py-2 text-[15px] text-paper disabled:opacity-60">
-          {busy ? '나가는 중…' : '나가기'}
+          {busy ? '나가는 중…' : move && onlyHere.length > 0 ? '옮기고 나가기' : '나가기'}
         </button>
       </div>
     </Dialog>
