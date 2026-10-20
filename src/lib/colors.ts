@@ -9,7 +9,7 @@ export const COLOR_STYLES: Record<
     soft: string
     medium: string
     strong: string
-    /** 달력 점, 사이드바 점, 색상 고르기 칸 (Tailwind 300번대, 색 계열이 겹치지 않게) */
+    /** 달력 점, 사이드바 점, 색상 고르기 칸 (차분한 파스텔 10색, 아이보리 배경에 맞춤) */
     dot: string
     text: string
     border: string
@@ -42,7 +42,7 @@ export const COLOR_STYLES: Record<
     ring: 'ring-sky-400',
   },
   butter: {
-    label: '노랑',
+    label: '버터 옐로',
     tint: 'bg-butter-50',
     soft: 'bg-butter-100',
     medium: 'bg-butter-200',
@@ -54,7 +54,7 @@ export const COLOR_STYLES: Record<
     ring: 'ring-butter-400',
   },
   lilac: {
-    label: '보라',
+    label: '라벤더',
     tint: 'bg-lilac-50',
     soft: 'bg-lilac-100',
     medium: 'bg-lilac-200',
@@ -66,7 +66,7 @@ export const COLOR_STYLES: Record<
     ring: 'ring-lilac-400',
   },
   peach: {
-    label: '주황',
+    label: '살구',
     tint: 'bg-peach-50',
     soft: 'bg-peach-100',
     medium: 'bg-peach-200',
@@ -90,7 +90,7 @@ export const COLOR_STYLES: Record<
     ring: 'ring-mint-400',
   },
   rose: {
-    label: '분홍',
+    label: '핑크',
     tint: 'bg-rose-50',
     soft: 'bg-rose-100',
     medium: 'bg-rose-200',
@@ -102,7 +102,7 @@ export const COLOR_STYLES: Record<
     ring: 'ring-rose-400',
   },
   sand: {
-    label: '남색',
+    label: '블루',
     tint: 'bg-sand-50',
     soft: 'bg-sand-100',
     medium: 'bg-sand-200',
@@ -114,7 +114,7 @@ export const COLOR_STYLES: Record<
     ring: 'ring-sand-400',
   },
   olive: {
-    label: '빨강',
+    label: '코랄',
     tint: 'bg-olive-50',
     soft: 'bg-olive-100',
     medium: 'bg-olive-200',
@@ -126,7 +126,7 @@ export const COLOR_STYLES: Record<
     ring: 'ring-olive-400',
   },
   slate: {
-    label: '회색',
+    label: '그레이',
     tint: 'bg-slate-50',
     soft: 'bg-slate-100',
     medium: 'bg-slate-200',
