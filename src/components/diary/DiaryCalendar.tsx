@@ -71,7 +71,7 @@ export function DiaryCalendar({ year, month, today, selected, calendarsOn, onSel
               {dots.length > 0 && (
                 <span className="flex flex-wrap gap-1 xl:gap-1.5" aria-hidden="true">
                   {dots.map((cal) => (
-                    <span key={cal.id} className={`h-[11.6px] w-[11.6px] rounded-full xl:h-[14.5px] xl:w-[14.5px] ${COLOR_STYLES[cal.color].dot}`} />
+                    <span key={cal.id} className={`h-[12.8px] w-[12.8px] rounded-full xl:h-[16px] xl:w-[16px] ${COLOR_STYLES[cal.color].dot}`} />
                   ))}
                 </span>
               )}
