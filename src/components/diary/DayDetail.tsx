@@ -72,7 +72,7 @@ export function DayDetail({
       <ul className="mt-6 flex min-h-12 flex-col">
         {items.map(({ record, calendar }) => (
           <li key={record.id} className={`flex items-center gap-4 py-2 ${deletingId === record.id ? 'opacity-40' : ''}`}>
-            <span className={`h-3.5 w-3.5 shrink-0 rounded-full ${COLOR_STYLES[calendar.color].dot}`} title={calendar.name} />
+            <span className={`h-4 w-11 shrink-0 rounded-full ${COLOR_STYLES[calendar.color].dot}`} title={calendar.name} />
             <span className="sr-only">{calendar.name}</span>
             <span className="flex-1 text-[17px] text-ink-900">{formatRecordAmount(record.amount, record.unit)}</span>
             <RecordMenu onEdit={() => onEdit(record)} onDelete={() => void remove(record)} />
@@ -205,7 +205,7 @@ function GoalList({
           const quick = calendar.unit === 'check'
           return (
             <li key={calendar.id} className="flex items-center gap-2.5 py-1 text-sm">
-              <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${COLOR_STYLES[calendar.color].dot}`} aria-hidden="true" />
+              <span className={`h-3.5 w-11 shrink-0 rounded-full ${COLOR_STYLES[calendar.color].dot}`} aria-hidden="true" />
               <span className={`truncate ${done ? 'text-ink-400' : 'text-ink-900'}`}>{calendar.name}</span>
               <span className="ml-auto shrink-0 text-xs text-ink-400">{detail}</span>
               <button
