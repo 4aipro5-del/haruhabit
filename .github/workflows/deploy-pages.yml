@@ -3,6 +3,7 @@
 # - 필요한 값: 저장소 Settings › Secrets and variables › Actions › Variables 에
 #     VITE_SUPABASE_URL, VITE_SUPABASE_PUBLISHABLE_KEY
 #   (둘 다 브라우저에 공개되는 값이에요. service_role / sb_secret_ 키는 절대 넣지 마세요.)
+#   선택: VITE_VAPID_PUBLIC_KEY (웹 푸시 공개 키. 비밀 키는 Supabase Secrets 에만 넣어요)
 
 name: Deploy to GitHub Pages
 
@@ -57,6 +58,7 @@ jobs:
           BASE_PATH: /${{ github.event.repository.name }}/
           VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
           VITE_SUPABASE_PUBLISHABLE_KEY: ${{ vars.VITE_SUPABASE_PUBLISHABLE_KEY }}
+          VITE_VAPID_PUBLIC_KEY: ${{ vars.VITE_VAPID_PUBLIC_KEY }}
         run: npm run build
 
       - uses: actions/configure-pages@v5

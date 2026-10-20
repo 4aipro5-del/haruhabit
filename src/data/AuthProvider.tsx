@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useMemo, useState, type ReactNode
 import type { Session, User } from '@supabase/supabase-js'
 import { friendlyError, initialUrl, isCloudConfigured, supabase } from '../lib/supabase'
 import { getPendingInvite } from '../lib/invite'
+import { forgetThisDevice } from '../lib/push'
 
 // 로그인 상태와 회원가입·로그인·로그아웃·비밀번호 재설정
 
@@ -136,6 +137,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       signOut: async () => {
         if (!supabase) return
         const client = supabase
+        // 로그아웃한 기기에는 그 계정의 챌린지 알림이 더 오지 않게 (실패해도 로그아웃은 진행)
+        await forgetThisDevice()
         await run(async () => {
           const { error } = await client.auth.signOut()
           return { data: null, error }

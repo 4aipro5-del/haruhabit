@@ -10,7 +10,7 @@ import { SharedDetailPage } from './SharedDetailPage'
 
 /** 캘린더 유형에 맞는 상세 화면을 골라 보여줍니다. */
 export function CalendarDetailPage({ id, today }: { id: string; today: DateKey }) {
-  const { getCalendar, recordsOf, refreshChallenge } = useData()
+  const { getCalendar, recordsOf, refreshChallenge, mode } = useData()
   const calendar = getCalendar(id)
   const isChallenge = Boolean(calendar && calendar.type !== 'personal')
 
@@ -25,7 +25,15 @@ export function CalendarDetailPage({ id, today }: { id: string; today: DateKey }
     return (
       <div className="flex flex-col items-center gap-4 py-20 text-center">
         <p className="text-lg font-semibold text-ink-900">캘린더를 찾을 수 없어요</p>
-        <LinkButton href={hrefFor({ name: 'home' })}>홈으로 돌아가기</LinkButton>
+        {mode === 'local' ? (
+          <>
+            {/* 알림을 누르거나 링크로 들어왔는데 이 브라우저에서 로그인하지 않은 경우 */}
+            <p className="text-base text-ink-500">친구와 함께하는 챌린지는 로그인하면 볼 수 있어요.</p>
+            <LinkButton href={hrefFor({ name: 'settings' })}>로그인하러 가기</LinkButton>
+          </>
+        ) : (
+          <LinkButton href={hrefFor({ name: 'home' })}>홈으로 돌아가기</LinkButton>
+        )}
       </div>
     )
   }

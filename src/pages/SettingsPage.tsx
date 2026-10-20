@@ -11,8 +11,7 @@ import { isEnded } from '../lib/activity'
 import { formatMonthDay, todayKey } from '../lib/date'
 import type { HabitCalendar } from '../types'
 import { calendarMembers } from '../data/repository'
-
-const COMING_SOON = ['알림']
+import { disablePush, enablePush, getPushState, type PushState } from '../lib/push'
 
 export function SettingsPage() {
   const { calendars, resetToSample, mode } = useData()
@@ -112,14 +111,89 @@ export function SettingsPage() {
       </section>
 
       <ul className="mt-10 border-t border-line sm:mt-12">
-        {COMING_SOON.map((item) => (
-          <li key={item} className="flex items-center justify-between gap-3 border-b border-line px-2 py-4 text-lg text-ink-400 sm:text-xl">
-            {item}
-            <span className="text-base">다음 단계에서 구현 예정</span>
-          </li>
-        ))}
+        <PushRow cloud={mode === 'cloud'} />
       </ul>
     </div>
+  )
+}
+
+const PUSH_HELP: Record<PushState, string> = {
+  on: '이 기기에서 친구가 챌린지에 새 기록을 남기면 알림이 와요. 다른 기기는 각각 따로 켜 주세요.',
+  off: '켜면 친구가 공동·경쟁 챌린지에 새 기록을 남길 때 이 기기로 알림이 와요.',
+  'ios-install':
+    "아이폰은 홈 화면에 추가한 하루한칸 앱에서만 알림을 받을 수 있어요. Safari 아래쪽 공유 버튼 › '홈 화면에 추가'를 누른 뒤, 홈 화면의 하루한칸에서 켜 주세요. (iOS 16.4 이상)",
+  denied:
+    '알림 권한이 꺼져 있어요. 맥은 시스템 설정 › 알림(또는 브라우저의 사이트 설정)에서, 아이폰은 설정 › 알림 › 하루한칸에서 허용한 뒤 다시 켜 주세요.',
+  unsupported: '이 브라우저는 웹 푸시 알림을 지원하지 않아요. 맥에서는 Safari·Chrome, 아이폰에서는 홈 화면에 추가한 하루한칸 앱에서 켤 수 있어요.',
+  'not-ready': '알림 설정이 아직 준비되지 않았어요. 잠시 후 다시 확인해 주세요.',
+}
+
+/** 챌린지 활동 알림 (이 기기만 켜고 끔, 기본 꺼짐) */
+function PushRow({ cloud }: { cloud: boolean }) {
+  const [state, setState] = useState<PushState | null>(null)
+  const [working, setWorking] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!cloud) return
+    let alive = true
+    void getPushState().then((s) => alive && setState(s))
+    return () => {
+      alive = false
+    }
+  }, [cloud])
+
+  const toggle = async () => {
+    if (working || !state) return
+    setWorking(true)
+    setError(null)
+    try {
+      setState(state === 'on' ? await disablePush() : await enablePush())
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '알림 설정을 바꾸지 못했어요.')
+    } finally {
+      setWorking(false)
+    }
+  }
+
+  const canToggle = cloud && (state === 'on' || state === 'off')
+  const on = state === 'on'
+  return (
+    <li className="border-b border-line px-2 py-4">
+      <div className="flex items-center justify-between gap-3 text-lg sm:text-xl">
+        <span className="text-ink-900">
+          챌린지 활동 알림 <span className="text-base text-ink-500">· 이 기기</span>
+        </span>
+        {cloud && (
+          <button
+            type="button"
+            role="switch"
+            aria-checked={on}
+            aria-label="이 기기에서 챌린지 활동 알림 받기"
+            onClick={() => void toggle()}
+            disabled={!canToggle || working}
+            className={`relative h-7 w-12 shrink-0 rounded-full transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
+              on ? 'bg-leaf-700' : 'bg-ink-300'
+            }`}
+          >
+            <span
+              className={`absolute top-0.5 h-6 w-6 rounded-full bg-paper shadow transition-all ${on ? 'left-[1.375rem]' : 'left-0.5'}`}
+              aria-hidden="true"
+            />
+          </button>
+        )}
+      </div>
+      <p className="mt-2 text-base text-ink-500">
+        {!cloud
+          ? '로그인하면 친구가 챌린지에 새 기록을 남길 때 알림을 받을 수 있어요.'
+          : state === null
+            ? '확인하는 중…'
+            : working
+              ? '설정하는 중…'
+              : PUSH_HELP[state]}
+      </p>
+      {error && <p className="mt-2 text-base text-sun">{error}</p>}
+    </li>
   )
 }
 

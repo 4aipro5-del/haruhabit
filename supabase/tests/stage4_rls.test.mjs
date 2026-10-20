@@ -11,6 +11,8 @@ const files = [
   '20261019000000_fix_conflict_error_code.sql',
   '20261020000000_stage4_challenges.sql',
   '20261021000000_invite_codes.sql',
+  '20261022000000_web_push.sql',
+  '20261022000001_push_service_role_grants.sql',
 ]
 
 const db = new PGlite()
@@ -21,6 +23,7 @@ await db.exec(`
     $$ select nullif(current_setting('request.jwt.claim.sub', true), '')::uuid $$;
   create role anon nologin;
   create role authenticated nologin;
+  create role service_role nologin;
   grant usage on schema public to anon, authenticated;
   grant usage on schema auth to anon, authenticated;
   grant execute on function auth.uid() to anon, authenticated;
@@ -285,6 +288,66 @@ ok('코드: 새 코드는 예전 코드와 다름', ci2.code !== ci.code)
 await as('a', `select revoke_invite($1)`, [codeCal])
 const rc = (await as('f', `select resolve_invite_code($1) as r`, [ci2.code])).rows[0].r
 await fails('코드: 취소된 링크의 코드로 참여 → 차단', 'f', `select accept_invite($1,'에프')`, [rc.token], '취소')
+
+// ---- 웹 푸시: 대기열·구독 ----
+const pushCh = (await as('a', `select (create_challenge('shared','푸시 테스트','book','sky','hours',10,$1,$2,'에이')).id`, [today, end])).rows[0].id
+const pinv = (await as('a', `select * from create_invite($1)`, [pushCh])).rows[0]
+await as('b', `select accept_invite($1,'비')`, [pinv.token])
+const outboxCount = async () => { await db.query('reset role'); return (await db.query(`select count(*)::int n from push_outbox`)).rows[0].n }
+const before = await outboxCount()
+const pa = crypto.randomUUID()
+await as('a', `select save_activity($1,$2,0.5,'hours',null,$3,$4)`, [pa, today, [personal, pushCh], personal])
+ok('푸시: 챌린지에 연결된 새 기록 → 대기열 1줄', (await outboxCount()) === before + 1)
+await as('a', `select save_activity($1,$2,0.7,'hours',null,$3,$4)`, [pa, today, [personal, pushCh], personal])
+ok('푸시: 같은 기록 수정 → 대기열 늘지 않음', (await outboxCount()) === before + 1)
+const pp = crypto.randomUUID()
+await as('a', `select save_activity($1,$2,1,'hours',null,$3,$4)`, [pp, today, [personal], personal])
+ok('푸시: 개인 캘린더에만 연결 → 대기열 없음', (await outboxCount()) === before + 1)
+await as('a', `select save_activity($1,$2,1,'hours',null,$3,$4)`, [pp, today, [personal, pushCh], personal])
+ok('푸시: 기존 기록을 수정해 챌린지 추가 → 대기열 없음 (수정은 제외)', (await outboxCount()) === before + 1)
+await as('a', `select save_activity($1,$2,1,'hours',null,$3,$4,null,'legacy-x')`, [crypto.randomUUID(), today, [personal, pushCh], personal])
+ok('푸시: 예전 기록 옮기기(legacy) → 대기열 없음', (await outboxCount()) === before + 1)
+const pm = crypto.randomUUID()
+await as('b', `select save_activity($1,$2,0.5,'hours',null,$3,$4)`, [pm, today, [pushCh], pushCh])
+ok('푸시: 다른 멤버의 새 기록도 대기열 1줄', (await outboxCount()) === before + 2)
+await fails('푸시: 대기열 직접 조회 불가', 'b', `select * from push_outbox`)
+await fails('푸시: 발송 상태 직접 조회 불가', 'b', `select * from push_deliveries`)
+await fails('푸시: 구독 표 직접 조회 불가', 'b', `select * from push_subscriptions`)
+await fails('푸시: 대기열 직접 추가 불가', 'b', `insert into push_outbox (activity_id, author_id) values ($1,$2)`, [pm, users.b], 'permission')
+const oldRec = crypto.randomUUID()
+await as('b', `select save_activity($1,$2,1,'hours',null,$3,$4)`, [oldRec, today, [bPersonal], bPersonal])
+await db.query('reset role')
+await db.query(`update activity_records set created_at = now() - interval '1 hour' where id=$1`, [oldRec])
+const c0 = await outboxCount()
+await as('b', `select enqueue_push($1)`, [oldRec])
+await as('b', `select enqueue_push($1)`, [pa])
+ok('푸시: 대기열 함수를 직접 불러도 예전 기록·남의 기록은 안 들어감', (await outboxCount()) === c0)
+// 대기열 추가가 실패해도 기록 저장은 성공 (대기열 함수가 고장 난 상황을 흉내)
+await db.query('reset role')
+const originalEnqueue = (await db.query(`select pg_get_functiondef('public.enqueue_push(uuid)'::regprocedure) d`)).rows[0].d
+await db.query(`create or replace function public.enqueue_push(p_activity_id uuid) returns void language plpgsql security definer set search_path = '' as $f$ begin raise exception 'broken'; end; $f$`)
+const survive = crypto.randomUUID()
+let saved = false
+try { await as('a', `select save_activity($1,$2,0.2,'hours',null,$3,$4)`, [survive, today, [pushCh], pushCh]); saved = true } catch (e) { console.log(e.message) }
+await db.query('reset role')
+ok('푸시: 대기열 추가가 실패해도 기록 저장은 성공', saved && (await db.query(`select count(*)::int n from activity_records where id=$1`, [survive])).rows[0].n === 1)
+await db.exec(originalEnqueue)
+// 기기 구독
+const ep = 'https://push.example.com/abc'
+await fails('푸시: 로그인 전 등록 불가', null, `select register_push($1,'k','a','x')`, [ep])
+await fails('푸시: http 주소 등록 불가', 'b', `select register_push('http://x','k','a','x')`)
+await as('b', `select register_push($1,'k1','a1','B 맥')`, [ep])
+ok('푸시: 내 기기 등록 확인', (await as('b', `select is_push_registered($1) r`, [ep])).rows[0].r === true)
+ok('푸시: 다른 사람은 내 기기 확인 결과 false', (await as('a', `select is_push_registered($1) r`, [ep])).rows[0].r === false)
+await as('a', `select unregister_push($1)`, [ep])
+ok('푸시: 다른 사람은 내 기기 해제 불가', (await as('b', `select is_push_registered($1) r`, [ep])).rows[0].r === true)
+await as('b', `select register_push($1,'k2','a2','B 아이폰')`, ['https://push.example.com/def'])
+await db.query('reset role')
+ok('푸시: 한 사람이 기기 여러 대', (await db.query(`select count(*)::int n from push_subscriptions where user_id=$1`, [users.b])).rows[0].n === 2)
+await as('a', `select register_push($1,'k3','a3','공용 맥')`, [ep])
+ok('푸시: 같은 기기에서 다른 계정으로 등록 → 새 계정으로 옮겨짐', (await as('a', `select is_push_registered($1) r`, [ep])).rows[0].r === true && (await as('b', `select is_push_registered($1) r`, [ep])).rows[0].r === false)
+await as('b', `select unregister_push($1)`, ['https://push.example.com/def'])
+ok('푸시: 내 기기 해제 (다른 기기는 영향 없음)', (await as('a', `select is_push_registered($1) r`, [ep])).rows[0].r === true)
 
 // 재귀·성능 확인: 여러 표 조회가 오류 없이 끝나는지
 try {
