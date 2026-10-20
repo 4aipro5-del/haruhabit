@@ -13,6 +13,7 @@ const files = [
   '20261021000000_invite_codes.sql',
   '20261022000000_web_push.sql',
   '20261022000001_push_service_role_grants.sql',
+  '20261022000002_invite_code_backfill.sql',
 ]
 
 const db = new PGlite()
@@ -348,6 +349,18 @@ await as('a', `select register_push($1,'k3','a3','공용 맥')`, [ep])
 ok('푸시: 같은 기기에서 다른 계정으로 등록 → 새 계정으로 옮겨짐', (await as('a', `select is_push_registered($1) r`, [ep])).rows[0].r === true && (await as('b', `select is_push_registered($1) r`, [ep])).rows[0].r === false)
 await as('b', `select unregister_push($1)`, ['https://push.example.com/def'])
 ok('푸시: 내 기기 해제 (다른 기기는 영향 없음)', (await as('a', `select is_push_registered($1) r`, [ep])).rows[0].r === true)
+
+// ---- 예전 링크(코드 없음)에도 코드 붙이기 ----
+const oldCal = (await as('a', `select (create_challenge('shared','예전 링크','book','sky','hours',5,$1,$2,'에이')).id`, [today, end])).rows[0].id
+await db.query('reset role')
+await db.query(`insert into calendar_invites (calendar_id, token, created_by, expires_at) values ($1, 'oldtoken0123456789abcdef0123456789', $2, now() + interval '3 days')`, [oldCal, users.a])
+const got = (await as('a', `select * from get_active_invite($1)`, [oldCal])).rows[0]
+ok('예전 링크: 방장이 열면 코드가 붙음', /^[A-HJKMNP-Z2-9]{6}$/.test(got?.code ?? ''), got?.code)
+ok('예전 링크: 링크 주소(토큰)는 그대로', got?.token === 'oldtoken0123456789abcdef0123456789')
+ok('예전 링크: 다시 열어도 같은 코드', (await as('a', `select * from get_active_invite($1)`, [oldCal])).rows[0].code === got.code)
+ok('예전 링크: 방장 아니면 못 봄', (await as('b', `select * from get_active_invite($1)`, [oldCal])).rows.length === 0)
+const viaOld = (await as('b', `select resolve_invite_code($1) as r`, [got.code])).rows[0].r
+ok('예전 링크: 붙은 코드로 참여 가능', viaOld.status === 'ok' && viaOld.token === 'oldtoken0123456789abcdef0123456789')
 
 // 재귀·성능 확인: 여러 표 조회가 오류 없이 끝나는지
 try {
