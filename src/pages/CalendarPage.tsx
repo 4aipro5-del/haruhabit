@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import type { ActivityRecord, DateKey, HabitCalendar } from '../types'
 import type { CalendarFilter } from '../components/layout/Sidebar'
@@ -102,6 +102,10 @@ export function CalendarPage({ today, filter }: CalendarPageProps) {
     else setDialog({ mode: 'add', id: crypto.randomUUID(), calendarIds: [calendar.id] })
   }
 
+  // 이 날짜의 '연결 없음' 기록 (전체 보기에서만. 특정 캘린더를 골라 보면 그 캘린더 기록만 보여 줌)
+  const unlinkedToday =
+    filter === 'all' ? diary.myRecords.filter((r) => r.date === selected && r.calendarIds.length === 0) : []
+
   const selectDate = (date: DateKey) => {
     setSelected(date)
     const p = parseKey(date)
@@ -160,6 +164,12 @@ export function CalendarPage({ today, filter }: CalendarPageProps) {
             onSaveMemo={(text) => diary.saveMemo(selected, text)}
             onGoalToggle={toggleGoal}
             isGoalDisabled={(calendar) => !isInPeriod(calendar, selected)}
+            unlinkedCount={unlinkedToday.length}
+            onUnlinked={() =>
+              unlinkedToday.length === 1
+                ? setDialog({ mode: 'edit', record: unlinkedToday[0] })
+                : setChooser({ calendar: UNLINKED, records: unlinkedToday })
+            }
           />
         </aside>
       </div>
@@ -210,11 +220,15 @@ export function CalendarPage({ today, filter }: CalendarPageProps) {
             setChooser(null)
             setDialog({ mode: 'edit', record })
           }}
-          onAddNew={() => {
-            const id = chooser.calendar.id
-            setChooser(null)
-            setDialog({ mode: 'add', id: crypto.randomUUID(), calendarIds: [id] })
-          }}
+          onAddNew={
+            chooser.calendar === UNLINKED
+              ? undefined
+              : () => {
+                  const id = chooser.calendar.id
+                  setChooser(null)
+                  setDialog({ mode: 'add', id: crypto.randomUUID(), calendarIds: [id] })
+                }
+          }
           onClose={() => setChooser(null)}
         />
       )}
@@ -296,9 +310,17 @@ function RecordChooser({
   records: ActivityRecord[]
   calendars: HabitCalendar[]
   onPick: (record: ActivityRecord) => void
-  onAddNew: () => void
+  /** 없으면 '새로 추가' 버튼을 숨김 ('연결 없음'은 새로 만들 수 없음) */
+  onAddNew?: () => void
   onClose: () => void
 }) {
+  // Esc 로 닫기 (다른 팝업과 같게)
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose()
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [onClose])
+
   /** 이 기록이 함께 반영된 다른 캘린더 이름 (구분에 도움) */
   const others = (record: ActivityRecord) =>
     record.calendarIds
@@ -318,7 +340,11 @@ function RecordChooser({
         <h2 id="chooser-title" className="text-lg text-ink-900">
           '{calendar.name}' 기록이 {records.length}건 있어요
         </h2>
-        <p className="mt-1 text-sm text-ink-500">고치거나 지울 기록을 골라 주세요.</p>
+        <p className="mt-1 text-sm text-ink-500">
+          {calendar === UNLINKED
+            ? '고르면 다른 캘린더에 다시 연결하거나 지울 수 있어요.'
+            : '고치거나 지울 기록을 골라 주세요.'}
+        </p>
         <ul className="mt-4 flex flex-col gap-1.5">
           {records.map((record, index) => (
             <li key={record.id}>
@@ -338,9 +364,13 @@ function RecordChooser({
           ))}
         </ul>
         <div className="mt-5 flex justify-between gap-2">
-          <button type="button" onClick={onAddNew} className="rounded-lg px-3 py-2 text-[15px] text-leaf-700 hover:bg-line/50">
-            + 새로 추가
-          </button>
+          {onAddNew ? (
+            <button type="button" onClick={onAddNew} className="rounded-lg px-3 py-2 text-[15px] text-leaf-700 hover:bg-line/50">
+              + 새로 추가
+            </button>
+          ) : (
+            <span />
+          )}
           <button type="button" onClick={onClose} className="rounded-lg px-4 py-2 text-[15px] text-ink-700 hover:bg-line/60" autoFocus>
             닫기
           </button>
