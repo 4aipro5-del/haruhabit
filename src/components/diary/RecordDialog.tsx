@@ -12,6 +12,8 @@ interface RecordDialogProps {
   isEdit: boolean
   /** 저장이 끝나면(성공) 부모가 팝업을 닫음. 실패하면 예외 → 팝업에 오류 표시 */
   onSave: (input: RecordInput) => Promise<void>
+  /** 수정할 때만: 이 활동 원본 삭제 (연결된 모든 캘린더에서 빠짐) */
+  onDelete?: () => Promise<void>
   onClose: () => void
 }
 
@@ -21,7 +23,7 @@ interface RecordDialogProps {
  * 입력 칸(시간·km 등)은 고른 캘린더의 기록 방식을 따릅니다.
  * 기록 방식이 다른 캘린더나 기간 밖의 캘린더는 함께 고를 수 없습니다.
  */
-export function RecordDialog({ calendars, initial, isEdit, onSave, onClose }: RecordDialogProps) {
+export function RecordDialog({ calendars, initial, isEdit, onSave, onDelete, onClose }: RecordDialogProps) {
   const [date, setDate] = useState(initial.date)
   const [hours, setHours] = useState(initial.amount ? String(Math.floor(initial.amount)) : '')
   const [minutes, setMinutes] = useState(initial.amount ? String(Math.round((initial.amount % 1) * 60)) : '')
@@ -31,6 +33,22 @@ export function RecordDialog({ calendars, initial, isEdit, onSave, onClose }: Re
   // 화면이 다시 그려지기 전에 연달아 눌러도 한 번만 보내도록 즉시 잠그는 장치
   const submitting = useRef(false)
   const [error, setError] = useState<string | null>(null)
+  /** 삭제는 한 번 더 눌러야 실행 (실수 방지) */
+  const [confirmingDelete, setConfirmingDelete] = useState(false)
+
+  const remove = async () => {
+    if (!onDelete || submitting.current) return
+    submitting.current = true
+    setSaving(true)
+    setError(null)
+    try {
+      await onDelete()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '삭제하지 못했어요.')
+      setSaving(false)
+      submitting.current = false
+    }
+  }
 
   // 기록 방식은 처음 고른 캘린더를 따릅니다 (기간 밖 캘린더는 빼고)
   const firstPicked = selected
@@ -215,7 +233,19 @@ export function RecordDialog({ calendars, initial, isEdit, onSave, onClose }: Re
           </p>
         )}
 
-        <div className="mt-6 flex justify-end gap-2">
+        <div className="mt-6 flex items-center justify-end gap-2">
+          {isEdit && onDelete && (
+            <button
+              type="button"
+              onClick={() => (confirmingDelete ? void remove() : setConfirmingDelete(true))}
+              disabled={saving}
+              className={`mr-auto rounded-lg px-3 py-2 text-[15px] disabled:opacity-60 ${
+                confirmingDelete ? 'bg-sun text-paper' : 'text-sun hover:bg-line/50'
+              }`}
+            >
+              {confirmingDelete ? '정말 삭제' : '삭제'}
+            </button>
+          )}
           <button
             type="button"
             onClick={onClose}

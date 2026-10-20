@@ -54,8 +54,6 @@ export function CalendarPage({ today, filter }: CalendarPageProps) {
   /** 점 색깔을 정할 캘린더: 개별 보기면 그 캘린더, 전체 보기면 활동의 대표 캘린더 */
   const dotCalendarOf = (record: ActivityRecord) =>
     filterCalendar ?? primaryCalendar(record, calendars) ?? (record.calendarIds.length === 0 ? UNLINKED : undefined)
-  // 점·목록 순서: 캘린더 목록 순, '연결 없음'은 맨 뒤
-  const orderOf = (cal: HabitCalendar) => (cal === UNLINKED ? calendars.length : calendars.indexOf(cal))
 
   // 날짜별로 점을 찍을 캘린더 id. 같은 활동이 여러 캘린더에 연결돼도 점은 하나입니다.
   const dotIdsByDate = new Map<DateKey, Set<string>>()
@@ -70,12 +68,6 @@ export function CalendarPage({ today, filter }: CalendarPageProps) {
   // 기간이 끝난 캘린더는 목표 목록과 기록 팝업에서 빼고, 기록·점·통계는 그대로 둠
   const activeCalendars = calendars.filter((c) => !isEnded(c, today))
   const goals = (filterCalendar ? [filterCalendar] : activeCalendars).map((cal) => goalStatus(cal, diary.recordsOf(cal.id), selected))
-
-  const dayItems = visibleRecords
-    .filter((r) => r.date === selected)
-    .map((record) => ({ record, calendar: dotCalendarOf(record)! }))
-    .filter((item) => item.calendar)
-    .sort((a, b) => orderOf(a.calendar) - orderOf(b.calendar))
 
   /**
    * 목표 체크박스 (빠른 기록)
@@ -152,12 +144,10 @@ export function CalendarPage({ today, filter }: CalendarPageProps) {
         <aside className="mx-4 border-t border-ink-700/40 py-6 sm:mx-8 lg:ml-11 xl:mx-0 xl:my-6 xl:w-80 xl:shrink-0 xl:border-l xl:border-t-0 xl:px-7 xl:py-2 2xl:w-96">
           <DayDetail
             date={selected}
-            items={dayItems}
             goals={goals}
             isToday={selected === today}
             memo={diary.memos[selected] ?? ''}
-            onEdit={(record) => setDialog({ mode: 'edit', record })}
-            onDelete={(record) => diary.removeRecord(record.id)}
+            onAdd={() => setDialog({ mode: 'add', id: crypto.randomUUID() })}
             onSaveMemo={(text) => diary.saveMemo(selected, text)}
             onGoalToggle={toggleGoal}
             isGoalDisabled={(calendar) => !isInPeriod(calendar, selected)}
@@ -183,6 +173,14 @@ export function CalendarPage({ today, filter }: CalendarPageProps) {
                 }
           }
           isEdit={dialog.mode === 'edit'}
+          onDelete={
+            dialog.mode === 'edit'
+              ? async () => {
+                  await diary.removeRecord(dialog.record.id)
+                  setDialog(null)
+                }
+              : undefined
+          }
           onClose={() => setDialog(null)}
           onSave={async (input) => {
             // 저장이 실제로 끝난 뒤에만 팝업을 닫음 (실패하면 팝업에 오류가 보임)
