@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Check, Plus } from 'lucide-react'
+import { Check } from 'lucide-react'
 import type { ActivityRecord, DateKey, HabitCalendar } from '../../types'
 import { COLOR_STYLES } from '../../lib/colors'
 import { formatShortDate } from '../../lib/date'
@@ -21,7 +21,6 @@ interface DayDetailProps {
   goals: GoalStatus[]
   isToday: boolean
   memo: string
-  onAdd: () => void
   onEdit: (record: ActivityRecord) => void
   onDelete: (record: ActivityRecord) => Promise<void>
   onSaveMemo: (text: string) => Promise<void>
@@ -42,7 +41,6 @@ export function DayDetail({
   goals,
   isToday,
   memo,
-  onAdd,
   onEdit,
   onDelete,
   onSaveMemo,
@@ -66,16 +64,9 @@ export function DayDetail({
 
   return (
     <div className="flex flex-col">
-      <div className="flex items-center justify-between gap-3">
+      {/* 기록은 아래 목표 체크박스로 추가해요 (팝업에서 다른 캘린더도 함께 고를 수 있음) */}
+      <div className="flex min-h-11 items-center gap-3">
         <h2 className="text-2xl text-ink-900 sm:text-[26px]">{formatShortDate(date)}</h2>
-        <button
-          type="button"
-          onClick={onAdd}
-          aria-label="기록 추가"
-          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-leaf-500 bg-leaf-100/50 text-leaf-700 hover:bg-leaf-100"
-        >
-          <Plus size={22} strokeWidth={1.6} />
-        </button>
       </div>
 
       <ul className="mt-6 flex min-h-12 flex-col">
@@ -87,7 +78,11 @@ export function DayDetail({
             <RecordMenu onEdit={() => onEdit(record)} onDelete={() => void remove(record)} />
           </li>
         ))}
-        {items.length === 0 && <li className="py-2 text-sm text-ink-400">기록 없음</li>}
+        {items.length === 0 && (
+          <li className="py-2 text-sm text-ink-400">
+            기록 없음{goals.length > 0 && ' · 아래 목표의 체크박스를 눌러 기록해요'}
+          </li>
+        )}
       </ul>
       {deleteError && (
         <p role="alert" className="mt-2 rounded-lg bg-peach-100 px-3 py-2 text-sm text-peach-700">

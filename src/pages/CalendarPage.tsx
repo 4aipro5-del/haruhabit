@@ -156,7 +156,6 @@ export function CalendarPage({ today, filter }: CalendarPageProps) {
             goals={goals}
             isToday={selected === today}
             memo={diary.memos[selected] ?? ''}
-            onAdd={() => setDialog({ mode: 'add', id: crypto.randomUUID() })}
             onEdit={(record) => setDialog({ mode: 'edit', record })}
             onDelete={(record) => diary.removeRecord(record.id)}
             onSaveMemo={(text) => diary.saveMemo(selected, text)}
