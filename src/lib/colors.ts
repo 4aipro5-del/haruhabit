@@ -9,7 +9,7 @@ export const COLOR_STYLES: Record<
     soft: string
     medium: string
     strong: string
-    /** 달력 점, 사이드바 점, 색상 고르기 칸 (차분한 파스텔 10색, 아이보리 배경에 맞춤) */
+    /** 달력 점, 사이드바 점, 색상 고르기 칸 (밝고 맑은 파스텔 10색) */
     dot: string
     text: string
     border: string
