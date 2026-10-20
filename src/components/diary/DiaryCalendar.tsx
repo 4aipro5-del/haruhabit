@@ -68,8 +68,9 @@ export function DiaryCalendar({ year, month, today, selected, calendarsOn, onSel
               >
                 {parseKey(date).day}
               </span>
+              {/* 기록 점: 휴대폰(좁은 칸)에서는 2개씩 두 줄(2×2), 넓은 화면에서는 한 줄로 */}
               {dots.length > 0 && (
-                <span className="flex flex-wrap gap-1 xl:gap-1.5" aria-hidden="true">
+                <span className="grid grid-cols-2 gap-0.5 sm:flex sm:flex-wrap sm:gap-1 xl:gap-1.5" aria-hidden="true">
                   {dots.map((cal) => (
                     <span key={cal.id} className={`h-[12.8px] w-[12.8px] rounded-full xl:h-[16px] xl:w-[16px] ${COLOR_STYLES[cal.color].dot}`} />
                   ))}
