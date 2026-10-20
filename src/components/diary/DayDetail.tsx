@@ -167,7 +167,8 @@ function GoalList({
   }
 
   return (
-    <section className="mb-6" aria-label={title}>
+    // 메모와 붙어 보이지 않게 아래 간격 40px
+    <section className="mb-10" aria-label={title}>
       <div className="mb-3 flex items-baseline justify-between">
         <h3 className="text-lg font-medium text-ink-900">{title}</h3>
         <span className="text-xs text-ink-400">
