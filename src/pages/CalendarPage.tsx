@@ -160,7 +160,6 @@ export function CalendarPage({ today, filter }: CalendarPageProps) {
             goals={goals}
             isToday={selected === today}
             memo={diary.memos[selected] ?? ''}
-            onAdd={() => setDialog({ mode: 'add', id: crypto.randomUUID() })}
             onSaveMemo={(text) => diary.saveMemo(selected, text)}
             onGoalToggle={toggleGoal}
             isGoalDisabled={(calendar) => !isInPeriod(calendar, selected)}

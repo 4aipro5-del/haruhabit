@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Check, Plus } from 'lucide-react'
+import { Check } from 'lucide-react'
 import type { DateKey, HabitCalendar } from '../../types'
 import { COLOR_STYLES } from '../../lib/colors'
 import { formatShortDate } from '../../lib/date'
@@ -11,8 +11,6 @@ interface DayDetailProps {
   goals: GoalStatus[]
   isToday: boolean
   memo: string
-  /** + 버튼: 기록 추가 팝업 */
-  onAdd: () => void
   onSaveMemo: (text: string) => Promise<void>
   /**
    * 목표 체크박스를 눌렀을 때 (빠른 기록)
@@ -29,7 +27,7 @@ interface DayDetailProps {
 }
 
 /**
- * 오른쪽 날짜 상세: 날짜 제목(+ 기록 추가) → 이날의 목표 → 메모
+ * 오른쪽 날짜 상세: 날짜 제목 → 이날의 목표(체크박스로 기록) → 메모
  * 활동 기록 목록은 화면에서만 숨겼어요. 기록은 달력의 바와 목표 체크로 보이고,
  * 수정·삭제는 목표 체크박스를 눌러 여는 수정 팝업에서 해요.
  */
@@ -38,7 +36,6 @@ export function DayDetail({
   goals,
   isToday,
   memo,
-  onAdd,
   onSaveMemo,
   onGoalToggle,
   isGoalDisabled,
@@ -47,16 +44,9 @@ export function DayDetail({
 }: DayDetailProps) {
   return (
     <div className="flex flex-col">
-      <div className="flex items-center justify-between gap-3">
+      {/* 기록은 아래 목표의 체크박스로 추가해요 (팝업에서 다른 캘린더도 함께 고를 수 있음) */}
+      <div className="flex min-h-11 items-center gap-3">
         <h2 className="text-2xl text-ink-900 sm:text-[26px]">{formatShortDate(date)}</h2>
-        <button
-          type="button"
-          onClick={onAdd}
-          aria-label="기록 추가"
-          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-leaf-500 bg-leaf-100/50 text-leaf-700 hover:bg-leaf-100"
-        >
-          <Plus size={22} strokeWidth={1.6} />
-        </button>
       </div>
 
       {/* 날짜 제목과 목표 사이 약 32px */}
