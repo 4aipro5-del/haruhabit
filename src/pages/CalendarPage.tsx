@@ -4,7 +4,7 @@ import type { ActivityRecord, DateKey, HabitCalendar } from '../types'
 import type { CalendarFilter } from '../components/layout/Sidebar'
 import { useData } from '../data/DataProvider'
 import { formatMonthLabel, parseKey, shiftMonth } from '../lib/date'
-import { isEnded, primaryCalendar, recordsForFilter } from '../lib/activity'
+import { isEnded, isInPeriod, primaryCalendar, recordsForFilter } from '../lib/activity'
 import { goalStatus } from '../lib/goals'
 import { Paper } from '../components/layout/Paper'
 import { DiaryCalendar } from '../components/diary/DiaryCalendar'
@@ -41,7 +41,12 @@ export function CalendarPage({ today, filter }: CalendarPageProps) {
   const [selected, setSelected] = useState<DateKey>(today)
   /** 팝업: 닫힘 / 새 기록 / 수정할 기록 */
   // 새 기록은 팝업을 열 때 id 를 미리 정해 둠 → 저장을 다시 시도해도 같은 활동으로 저장됨
-  const [dialog, setDialog] = useState<null | { mode: 'add'; id: string } | { mode: 'edit'; record: ActivityRecord }>(null)
+  // calendarIds: 목표 체크박스로 열었을 때 미리 체크해 둘 캘린더
+  const [dialog, setDialog] = useState<
+    null | { mode: 'add'; id: string; calendarIds?: string[] } | { mode: 'edit'; record: ActivityRecord }
+  >(null)
+  /** 목표 체크를 다시 눌러 '했는지만' 기록을 지울 때 확인 */
+  const [confirmRemove, setConfirmRemove] = useState<null | { record: ActivityRecord; calendar: HabitCalendar }>(null)
 
   const filterCalendar = calendars.find((c) => c.id === filter)
   const visibleRecords = recordsForFilter(diary.myRecords, filter).filter((r) => r.amount > 0)
@@ -71,6 +76,30 @@ export function CalendarPage({ today, filter }: CalendarPageProps) {
     .map((record) => ({ record, calendar: dotCalendarOf(record)! }))
     .filter((item) => item.calendar)
     .sort((a, b) => orderOf(a.calendar) - orderOf(b.calendar))
+
+  /**
+   * 목표 체크박스 (빠른 기록)
+   * - 했는지만: 기록이 없으면 바로 '완료' 기록, 있으면 지울지 물어봄
+   *   (그 기록이 다른 캘린더에도 연결돼 있으면 여러 곳에서 빠지므로 지우지 않고 수정 팝업)
+   * - 양 기록: 기록이 없으면 그 캘린더가 체크된 기록 팝업, 있으면 마지막 기록 수정 팝업
+   */
+  const toggleGoal = async (calendar: HabitCalendar) => {
+    if (!isInPeriod(calendar, selected)) return
+    const mine = diary.myRecords.filter((r) => r.date === selected && r.calendarIds.includes(calendar.id))
+    const last = mine[mine.length - 1]
+    if (calendar.unit === 'check') {
+      if (!last) {
+        await diary.addRecord({ date: selected, amount: 1, unit: 'check', calendarIds: [calendar.id] }, crypto.randomUUID())
+      } else if (mine.length === 1 && last.calendarIds.length === 1) {
+        setConfirmRemove({ record: last, calendar })
+      } else {
+        setDialog({ mode: 'edit', record: last })
+      }
+      return
+    }
+    if (last) setDialog({ mode: 'edit', record: last })
+    else setDialog({ mode: 'add', id: crypto.randomUUID(), calendarIds: [calendar.id] })
+  }
 
   const selectDate = (date: DateKey) => {
     setSelected(date)
@@ -131,6 +160,8 @@ export function CalendarPage({ today, filter }: CalendarPageProps) {
             onEdit={(record) => setDialog({ mode: 'edit', record })}
             onDelete={(record) => diary.removeRecord(record.id)}
             onSaveMemo={(text) => diary.saveMemo(selected, text)}
+            onGoalToggle={toggleGoal}
+            isGoalDisabled={(calendar) => !isInPeriod(calendar, selected)}
           />
         </aside>
       </div>
@@ -149,7 +180,7 @@ export function CalendarPage({ today, filter }: CalendarPageProps) {
                   date: selected,
                   amount: 0,
                   unit: filterCalendar?.unit ?? 'hours',
-                  calendarIds: filterCalendar ? [filterCalendar.id] : [],
+                  calendarIds: dialog.calendarIds ?? (filterCalendar ? [filterCalendar.id] : []),
                 }
           }
           isEdit={dialog.mode === 'edit'}
@@ -163,6 +194,67 @@ export function CalendarPage({ today, filter }: CalendarPageProps) {
           }}
         />
       )}
+
+      {confirmRemove && (
+        <ConfirmRemove
+          calendarName={confirmRemove.calendar.name}
+          onCancel={() => setConfirmRemove(null)}
+          onConfirm={async () => {
+            await diary.removeRecord(confirmRemove.record.id)
+            setConfirmRemove(null)
+          }}
+        />
+      )}
     </Paper>
+  )
+}
+
+/** 목표 체크를 다시 눌렀을 때: 이날의 '완료' 기록을 지울지 확인 */
+function ConfirmRemove({ calendarName, onCancel, onConfirm }: { calendarName: string; onCancel: () => void; onConfirm: () => Promise<void> }) {
+  const [working, setWorking] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const confirm = async () => {
+    setWorking(true)
+    setError(null)
+    try {
+      await onConfirm()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '지우지 못했어요.')
+      setWorking(false)
+    }
+  }
+  return (
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-ink-900/20 p-3 sm:items-center" onMouseDown={() => !working && onCancel()}>
+      <div
+        role="alertdialog"
+        aria-modal="true"
+        aria-labelledby="remove-check-title"
+        className="paper-grid w-full max-w-sm rounded-2xl border border-line p-6"
+        onMouseDown={(e) => e.stopPropagation()}
+      >
+        <h2 id="remove-check-title" className="text-lg text-ink-900">
+          '{calendarName}' 완료 기록을 지울까요?
+        </h2>
+        <p className="mt-3 text-sm leading-relaxed text-ink-700">이날 체크한 기록이 지워지고, 통계에서도 빠져요.</p>
+        {error && (
+          <p role="alert" className="mt-3 rounded-lg bg-peach-100 px-3 py-2 text-sm text-peach-700">
+            {error}
+          </p>
+        )}
+        <div className="mt-6 flex justify-end gap-2">
+          <button type="button" onClick={onCancel} disabled={working} className="rounded-lg px-4 py-2 text-[15px] text-ink-700 hover:bg-line/60" autoFocus>
+            취소
+          </button>
+          <button
+            type="button"
+            onClick={() => void confirm()}
+            disabled={working}
+            className="rounded-lg bg-sun px-5 py-2 text-[15px] text-paper disabled:opacity-60"
+          >
+            {working ? '지우는 중…' : '지우기'}
+          </button>
+        </div>
+      </div>
+    </div>
   )
 }
