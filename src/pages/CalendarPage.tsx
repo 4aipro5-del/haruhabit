@@ -6,6 +6,8 @@ import { useData } from '../data/DataProvider'
 import { formatMonthLabel, parseKey, shiftMonth } from '../lib/date'
 import { isEnded, isInPeriod, primaryCalendar, recordsForFilter } from '../lib/activity'
 import { goalStatus } from '../lib/goals'
+import { COLOR_STYLES } from '../lib/colors'
+import { formatRecordAmount } from '../lib/units'
 import { Paper } from '../components/layout/Paper'
 import { DiaryCalendar } from '../components/diary/DiaryCalendar'
 import { DayDetail } from '../components/diary/DayDetail'
@@ -47,6 +49,8 @@ export function CalendarPage({ today, filter }: CalendarPageProps) {
   >(null)
   /** 목표 체크를 다시 눌러 '했는지만' 기록을 지울 때 확인 */
   const [confirmRemove, setConfirmRemove] = useState<null | { record: ActivityRecord; calendar: HabitCalendar }>(null)
+  /** 같은 날 같은 캘린더에 기록이 2건 이상일 때: 어느 기록을 고칠지 고르는 창 */
+  const [chooser, setChooser] = useState<null | { calendar: HabitCalendar; records: ActivityRecord[] }>(null)
 
   const filterCalendar = calendars.find((c) => c.id === filter)
   const visibleRecords = recordsForFilter(diary.myRecords, filter).filter((r) => r.amount > 0)
@@ -79,6 +83,11 @@ export function CalendarPage({ today, filter }: CalendarPageProps) {
     if (!isInPeriod(calendar, selected)) return
     const mine = diary.myRecords.filter((r) => r.date === selected && r.calendarIds.includes(calendar.id))
     const last = mine[mine.length - 1]
+    // 2건 이상이면 바로 하나를 열지 않고 고르게 함 (숨겨진 기록도 고치거나 지울 수 있게)
+    if (mine.length >= 2) {
+      setChooser({ calendar, records: mine })
+      return
+    }
     if (calendar.unit === 'check') {
       if (!last) {
         await diary.addRecord({ date: selected, amount: 1, unit: 'check', calendarIds: [calendar.id] }, crypto.randomUUID())
@@ -192,6 +201,24 @@ export function CalendarPage({ today, filter }: CalendarPageProps) {
         />
       )}
 
+      {chooser && (
+        <RecordChooser
+          calendar={chooser.calendar}
+          records={chooser.records}
+          calendars={calendars}
+          onPick={(record) => {
+            setChooser(null)
+            setDialog({ mode: 'edit', record })
+          }}
+          onAddNew={() => {
+            const id = chooser.calendar.id
+            setChooser(null)
+            setDialog({ mode: 'add', id: crypto.randomUUID(), calendarIds: [id] })
+          }}
+          onClose={() => setChooser(null)}
+        />
+      )}
+
       {confirmRemove && (
         <ConfirmRemove
           calendarName={confirmRemove.calendar.name}
@@ -249,6 +276,73 @@ function ConfirmRemove({ calendarName, onCancel, onConfirm }: { calendarName: st
             className="rounded-lg bg-sun px-5 py-2 text-[15px] text-paper disabled:opacity-60"
           >
             {working ? '지우는 중…' : '지우기'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+/** 같은 날 같은 캘린더에 기록이 여러 건일 때 고칠 기록 고르기 */
+function RecordChooser({
+  calendar,
+  records,
+  calendars,
+  onPick,
+  onAddNew,
+  onClose,
+}: {
+  calendar: HabitCalendar
+  records: ActivityRecord[]
+  calendars: HabitCalendar[]
+  onPick: (record: ActivityRecord) => void
+  onAddNew: () => void
+  onClose: () => void
+}) {
+  /** 이 기록이 함께 반영된 다른 캘린더 이름 (구분에 도움) */
+  const others = (record: ActivityRecord) =>
+    record.calendarIds
+      .filter((id) => id !== calendar.id)
+      .map((id) => calendars.find((c) => c.id === id)?.name)
+      .filter(Boolean)
+      .join(', ')
+  return (
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-ink-900/20 p-3 sm:items-center" onMouseDown={onClose}>
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="chooser-title"
+        className="paper-grid w-full max-w-sm rounded-2xl border border-line p-6"
+        onMouseDown={(e) => e.stopPropagation()}
+      >
+        <h2 id="chooser-title" className="text-lg text-ink-900">
+          '{calendar.name}' 기록이 {records.length}건 있어요
+        </h2>
+        <p className="mt-1 text-sm text-ink-500">고치거나 지울 기록을 골라 주세요.</p>
+        <ul className="mt-4 flex flex-col gap-1.5">
+          {records.map((record, index) => (
+            <li key={record.id}>
+              <button
+                type="button"
+                onClick={() => onPick(record)}
+                className="flex w-full items-center gap-3 rounded-lg border border-line bg-white/70 px-3 py-2.5 text-left hover:bg-white"
+              >
+                <span className={`h-3.5 w-11 shrink-0 rounded-full ${COLOR_STYLES[calendar.color].dot}`} aria-hidden="true" />
+                <span className="flex-1 text-[15px] text-ink-900">
+                  {index + 1}. {formatRecordAmount(record.amount, record.unit)}
+                  {others(record) && <span className="ml-1.5 text-xs text-ink-500">· {others(record)}에도 반영</span>}
+                </span>
+                <span className="text-sm text-ink-400">수정</span>
+              </button>
+            </li>
+          ))}
+        </ul>
+        <div className="mt-5 flex justify-between gap-2">
+          <button type="button" onClick={onAddNew} className="rounded-lg px-3 py-2 text-[15px] text-leaf-700 hover:bg-line/50">
+            + 새로 추가
+          </button>
+          <button type="button" onClick={onClose} className="rounded-lg px-4 py-2 text-[15px] text-ink-700 hover:bg-line/60" autoFocus>
+            닫기
           </button>
         </div>
       </div>
